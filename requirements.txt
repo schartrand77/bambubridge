@@ -1,0 +1,8 @@
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pybambu==1.0.1
+paho-mqtt<2
+requests>=2.31,<3
+python-dateutil>=2.8.2,<3
+packaging>=23,<25
+swagger-ui-bundle==1.1.0
