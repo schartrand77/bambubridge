@@ -1,6 +1,6 @@
 <Container>
   <Name>bambubridge</Name>
-  <Repository>ghcr.io/schartrand77/bambubridge:latest</Repository>
+  <Repository>ghcr.io/schartrand77/bambubridge:main</Repository>
   <Network>bridge</Network>
   <WebUI>http://[IP]:[PORT:8288]/docs</WebUI>
   <Icon>https://raw.githubusercontent.com/schartrand77/bambubridge/main/icon.png</Icon>
