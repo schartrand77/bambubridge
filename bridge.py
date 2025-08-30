@@ -15,6 +15,7 @@ Optional:
   BAMBULAB_USERNAME   = ""                      # not needed for LAN-only
   BAMBULAB_AUTH_TOKEN = ""                      # not needed for LAN-only
   BAMBULAB_AUTOCONNECT= "1"                     # "1/true/yes/on" = connect all on startup
+  BAMBULAB_ALLOW_ORIGINS = "*"                  # comma-separated CORS origins
 
 Notes:
 - pybambu 1.0.x requires: device_type, serial, host, local_mqtt=True, access_code=...
@@ -55,11 +56,15 @@ app = FastAPI(
     openapi_url="/openapi.json",
 )
 
-# Permissive CORS for dashboards / local UIs
+ALLOW_ORIGINS = [o.strip() for o in os.getenv("BAMBULAB_ALLOW_ORIGINS", "*").split(",") if o.strip()] or ["*"]
+
+# CORS configuration (default allows any origin)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], allow_credentials=True,
-    allow_methods=["*"], allow_headers=["*"],
+    allow_origins=ALLOW_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # ---- Swagger UI assets served locally (no external CDN needed) ---------------
