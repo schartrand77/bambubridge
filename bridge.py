@@ -15,7 +15,8 @@ Optional:
   BAMBULAB_USERNAME   = ""                      # not needed for LAN-only
   BAMBULAB_AUTH_TOKEN = ""                      # not needed for LAN-only
   BAMBULAB_AUTOCONNECT= "1"                     # "1/true/yes/on" = connect all on startup
-  BAMBULAB_ALLOW_ORIGINS = "*"                  # comma-separated CORS origins
+  BAMBULAB_ALLOW_ORIGINS = ""                   # comma-separated CORS origins; default localhost only
+  BAMBULAB_API_KEY    = ""                      # optional API key for protected endpoints
 
 Notes:
 - pybambu 1.0.x requires: device_type, serial, host, local_mqtt=True, access_code=...
@@ -30,7 +31,7 @@ from typing import Dict, Any, Optional, Callable, AsyncGenerator, Generator
 
 from pydantic import BaseModel, HttpUrl
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, Security
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -38,6 +39,7 @@ from fastapi.openapi.docs import (
     get_swagger_ui_html,
     get_swagger_ui_oauth2_redirect_html,
 )
+from fastapi.security import APIKeyHeader
 
 # ---- logging -----------------------------------------------------------------
 log = logging.getLogger("bambubridge")
@@ -57,9 +59,10 @@ app = FastAPI(
     openapi_url="/openapi.json",
 )
 
-ALLOW_ORIGINS = [o.strip() for o in os.getenv("BAMBULAB_ALLOW_ORIGINS", "*").split(",") if o.strip()] or ["*"]
+DEFAULT_ORIGINS = ["http://localhost", "http://127.0.0.1"]
+ALLOW_ORIGINS = [o.strip() for o in os.getenv("BAMBULAB_ALLOW_ORIGINS", "").split(",") if o.strip()] or DEFAULT_ORIGINS
 
-# CORS configuration (default allows any origin)
+# CORS configuration (defaults to localhost only; override via BAMBULAB_ALLOW_ORIGINS)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOW_ORIGINS,
@@ -67,6 +70,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+API_KEY = os.getenv("BAMBULAB_API_KEY")
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+async def require_api_key(api_key: str = Security(api_key_header)) -> None:
+    if API_KEY and api_key != API_KEY:
+        raise HTTPException(status_code=403, detail="Invalid or missing API key")
 
 # ---- Swagger UI assets served locally (no external CDN needed) ---------------
 try:
@@ -321,7 +331,7 @@ async def list_printers():
         })
     return out
 
-@app.post("/api/{name}/connect")
+@app.post("/api/{name}/connect", dependencies=[Depends(require_api_key)])
 async def connect_now(name: str):
     c = await _connect(name)
     return {"ok": True, "name": name, "host": c.host, "serial": SERIALS.get(name)}
@@ -346,7 +356,7 @@ async def status(name: str):
         data["note"] = f"status extras unavailable: {type(e).__name__}"
     return JSONResponse(data)
 
-@app.post("/api/{name}/print")
+@app.post("/api/{name}/print", dependencies=[Depends(require_api_key)])
 async def start_print(name: str, job: JobRequest):
     """
     Body: {"gcode_url": "http://...", "thmf_url": "http://..."}  # thmf_url optional
@@ -374,7 +384,7 @@ async def start_print(name: str, job: JobRequest):
     except Exception as e:
         raise HTTPException(502, detail=f"start_print failed: {type(e).__name__}: {e}")
 
-@app.post("/api/{name}/pause")
+@app.post("/api/{name}/pause", dependencies=[Depends(require_api_key)])
 async def pause(name: str):
     c = await _connect(name)
     fn = _pick(c, ("pause_print", "pause"))
@@ -385,7 +395,7 @@ async def pause(name: str):
     except Exception as e:
         raise HTTPException(502, detail=f"pause failed: {type(e).__name__}: {e}")
 
-@app.post("/api/{name}/resume")
+@app.post("/api/{name}/resume", dependencies=[Depends(require_api_key)])
 async def resume(name: str):
     c = await _connect(name)
     fn = _pick(c, ("resume_print", "resume"))
@@ -396,7 +406,7 @@ async def resume(name: str):
     except Exception as e:
         raise HTTPException(502, detail=f"resume failed: {type(e).__name__}: {e}")
 
-@app.post("/api/{name}/stop")
+@app.post("/api/{name}/stop", dependencies=[Depends(require_api_key)])
 async def stop(name: str):
     c = await _connect(name)
     fn = _pick(c, ("stop_print", "stop"))
@@ -407,7 +417,7 @@ async def stop(name: str):
     except Exception as e:
         raise HTTPException(502, detail=f"stop failed: {type(e).__name__}: {e}")
 
-@app.get("/api/{name}/camera")
+@app.get("/api/{name}/camera", dependencies=[Depends(require_api_key)])
 async def camera(name: str):
     """
     MJPEG passthrough if your pybambu build exposes it; otherwise 501.
