@@ -1,3 +1,7 @@
 .git
 .DS_Store
 __pycache__/
+tests/
+*.pyc
+.pytest_cache/
+README.md
