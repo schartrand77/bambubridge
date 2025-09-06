@@ -32,5 +32,18 @@ def test_validate_env_missing(cfg, monkeypatch):
     monkeypatch.setattr(cfg, "PRINTERS", {"p1": "h"})
     monkeypatch.setattr(cfg, "SERIALS", {})
     monkeypatch.setattr(cfg, "LAN_KEYS", {"p1": "k"})
-    with pytest.raises(RuntimeError):
+    with pytest.raises(RuntimeError) as exc:
         cfg._validate_env()
+    assert "Missing BAMBULAB_SERIALS for p1" in str(exc.value)
+
+
+def test_validate_env_multiple_missing(cfg, monkeypatch):
+    monkeypatch.setattr(cfg, "PRINTERS", {"p1": "h"})
+    monkeypatch.setattr(cfg, "SERIALS", {"p2": "s"})
+    monkeypatch.setattr(cfg, "LAN_KEYS", {"p1": "k"})
+    with pytest.raises(RuntimeError) as exc:
+        cfg._validate_env()
+    msg = str(exc.value)
+    assert "Missing BAMBULAB_SERIALS for p1" in msg
+    assert "Missing BAMBULAB_PRINTERS for p2" in msg
+    assert "Missing BAMBULAB_LAN_KEYS for p2" in msg
