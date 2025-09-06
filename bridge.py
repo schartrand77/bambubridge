@@ -97,8 +97,35 @@ except Exception as _e:  # keep running even if package missing
         )
 
 # ---- runtime state -----------------------------------------------------------
-clients: Dict[str, BambuClient] = {}  # name -> live client
-last_error: Dict[str, str] = {}       # name -> last connection error message
+
+
+class PrinterState:
+    """Holds printer connection state with concurrency guards."""
+
+    def __init__(self) -> None:
+        self.clients: Dict[str, BambuClient] = {}
+        self.last_error: Dict[str, str] = {}
+        self.lock = asyncio.Lock()
+
+    async def get_client(self, name: str) -> Optional[BambuClient]:
+        async with self.lock:
+            return self.clients.get(name)
+
+    async def set_client(self, name: str, client: BambuClient) -> None:
+        async with self.lock:
+            self.clients[name] = client
+            self.last_error.pop(name, None)
+
+    async def set_error(self, name: str, detail: str) -> None:
+        async with self.lock:
+            self.last_error[name] = detail
+
+    async def snapshot(self) -> tuple[Dict[str, BambuClient], Dict[str, str]]:
+        async with self.lock:
+            return dict(self.clients), dict(self.last_error)
+
+
+state = PrinterState()
 
 # ---- env helpers -------------------------------------------------------------
 def _pairs(env: str) -> Dict[str, str]:
@@ -152,7 +179,7 @@ async def _connect(name: str, raise_http: bool = True) -> BambuClient:
     """Ensure a connected BambuClient; return it or raise HTTP error."""
     _require_known(name)
 
-    c = clients.get(name)
+    c = await state.get_client(name)
     if c and getattr(c, "connected", False):
         return c
 
@@ -185,14 +212,13 @@ async def _connect(name: str, raise_http: bool = True) -> BambuClient:
         if not c.connected:
             raise RuntimeError("Printer MQTT connected=False after wait")
 
-        clients[name] = c
-        last_error.pop(name, None)
+        await state.set_client(name, c)
         log.info("connected: %s@%s (%s)", name, host, serial)
         return c
 
     except Exception as e:
         detail = f"{type(e).__name__}: {e}"
-        last_error[name] = detail
+        await state.set_error(name, detail)
         log.warning("connect(%s) failed: %s", name, detail)
         if raise_http:
             raise HTTPException(status_code=502, detail=f"connect failed: {detail}")
@@ -220,14 +246,15 @@ async def healthz():
 @app.get("/api/printers")
 async def list_printers():
     out = []
+    clients_snapshot, errors_snapshot = await state.snapshot()
     for n, host in PRINTERS.items():
-        c = clients.get(n)
+        c = clients_snapshot.get(n)
         out.append({
             "name": n,
             "host": host,
             "serial": SERIALS.get(n),
             "connected": bool(c and getattr(c, "connected", False)),
-            "last_error": last_error.get(n),
+            "last_error": errors_snapshot.get(n),
         })
     return out
 
