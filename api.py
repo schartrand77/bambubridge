@@ -17,7 +17,7 @@ from fastapi.openapi.docs import (
     get_swagger_ui_oauth2_redirect_html,
 )
 from fastapi.security import APIKeyHeader
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, HttpUrl, Field
 
 from config import (
     PRINTERS,
@@ -145,6 +145,13 @@ class JobRequest(BaseModel):
     thmf_url: Optional[HttpUrl] = None
 
 
+class ActionResult(BaseModel):
+    """Standard response wrapper for printer actions."""
+
+    ok: bool = True
+    result: Dict[str, Any] = Field(default_factory=dict)
+
+
 # ---- routes ------------------------------------------------------------------
 
 
@@ -178,7 +185,7 @@ async def connect_now(name: str):
 
 
 @app.post("/api/{name}/disconnect", dependencies=[Depends(require_api_key)])
-async def disconnect_now(name: str):
+async def disconnect_now(name: str) -> ActionResult:
     _require_known(name)
     c = await state.get_client(name)
     if not c:
@@ -195,7 +202,7 @@ async def disconnect_now(name: str):
         raise HTTPException(502, detail=f"disconnect failed: {type(e).__name__}: {e}")
     async with state.lock:
         state.clients.pop(name, None)
-    return {"ok": True, "name": name}
+    return ActionResult(result={"name": name})
 
 
 @app.get("/api/{name}/status")
@@ -219,7 +226,7 @@ async def status(name: str):
 
 
 @app.post("/api/{name}/print", dependencies=[Depends(require_api_key)])
-async def start_print(name: str, job: JobRequest):
+async def start_print(name: str, job: JobRequest) -> ActionResult:
     c = await _connect(name)
     fn = _pick(c, ("start_print_from_url", "start_print")) or _pick(
         c.get_device(), ("start_print_from_url", "start_print")
@@ -232,30 +239,35 @@ async def start_print(name: str, job: JobRequest):
             if job.thmf_url:
                 kwargs["thmf_url"] = str(job.thmf_url)
             if inspect.iscoroutinefunction(fn):
-                return await fn(**kwargs)
-            return await asyncio.to_thread(fn, **kwargs)
+                res = await fn(**kwargs)
+            else:
+                res = await asyncio.to_thread(fn, **kwargs)
         except TypeError:
             kwargs = {"url": str(job.gcode_url)}
             if job.thmf_url:
                 kwargs["thmf_url"] = str(job.thmf_url)
             try:
                 if inspect.iscoroutinefunction(fn):
-                    return await fn(**kwargs)
-                return await asyncio.to_thread(fn, **kwargs)
+                    res = await fn(**kwargs)
+                else:
+                    res = await asyncio.to_thread(fn, **kwargs)
             except TypeError:
                 if job.thmf_url:
                     args = (str(job.gcode_url), str(job.thmf_url))
                 else:
                     args = (str(job.gcode_url),)
                 if inspect.iscoroutinefunction(fn):
-                    return await fn(*args)
-                return await asyncio.to_thread(fn, *args)
+                    res = await fn(*args)
+                else:
+                    res = await asyncio.to_thread(fn, *args)
     except Exception as e:  # pragma: no cover - pybambu variations
         raise HTTPException(502, detail=f"start_print failed: {type(e).__name__}: {e}")
+    data = res if isinstance(res, dict) else {"response": res}
+    return ActionResult(result=data)
 
 
 @app.post("/api/{name}/pause", dependencies=[Depends(require_api_key)])
-async def pause(name: str):
+async def pause(name: str) -> ActionResult:
     c = await _connect(name)
     fn = _pick(c, ("pause_print", "pause")) or _pick(
         c.get_device(), ("pause_print", "pause")
@@ -264,14 +276,17 @@ async def pause(name: str):
         raise HTTPException(501, "pybambu missing pause API")
     try:
         if inspect.iscoroutinefunction(fn):
-            return await fn()
-        return await asyncio.to_thread(fn)
+            res = await fn()
+        else:
+            res = await asyncio.to_thread(fn)
     except Exception as e:  # pragma: no cover
         raise HTTPException(502, detail=f"pause failed: {type(e).__name__}: {e}")
+    data = res if isinstance(res, dict) else {"response": res}
+    return ActionResult(result=data)
 
 
 @app.post("/api/{name}/resume", dependencies=[Depends(require_api_key)])
-async def resume(name: str):
+async def resume(name: str) -> ActionResult:
     c = await _connect(name)
     fn = _pick(c, ("resume_print", "resume")) or _pick(
         c.get_device(), ("resume_print", "resume")
@@ -280,14 +295,17 @@ async def resume(name: str):
         raise HTTPException(501, "pybambu missing resume API")
     try:
         if inspect.iscoroutinefunction(fn):
-            return await fn()
-        return await asyncio.to_thread(fn)
+            res = await fn()
+        else:
+            res = await asyncio.to_thread(fn)
     except Exception as e:  # pragma: no cover
         raise HTTPException(502, detail=f"resume failed: {type(e).__name__}: {e}")
+    data = res if isinstance(res, dict) else {"response": res}
+    return ActionResult(result=data)
 
 
 @app.post("/api/{name}/stop", dependencies=[Depends(require_api_key)])
-async def stop(name: str):
+async def stop(name: str) -> ActionResult:
     c = await _connect(name)
     fn = _pick(c, ("stop_print", "stop")) or _pick(
         c.get_device(), ("stop_print", "stop")
@@ -296,10 +314,13 @@ async def stop(name: str):
         raise HTTPException(501, "pybambu missing stop API")
     try:
         if inspect.iscoroutinefunction(fn):
-            return await fn()
-        return await asyncio.to_thread(fn)
+            res = await fn()
+        else:
+            res = await asyncio.to_thread(fn)
     except Exception as e:  # pragma: no cover
         raise HTTPException(502, detail=f"stop failed: {type(e).__name__}: {e}")
+    data = res if isinstance(res, dict) else {"response": res}
+    return ActionResult(result=data)
 
 
 @app.get("/api/{name}/camera", dependencies=[Depends(require_api_key)])
