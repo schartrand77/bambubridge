@@ -458,8 +458,9 @@ async def camera(name: str):
 
 def main() -> None:
     """Run the FastAPI application with a basic logging configuration."""
+    level_name = os.getenv("BAMBULAB_LOG_LEVEL", "INFO").upper()
     logging.basicConfig(
-        level=logging.INFO,
+        level=getattr(logging, level_name, logging.INFO),
         format="%(levelname)s:%(name)s:%(message)s",
     )
     import uvicorn
