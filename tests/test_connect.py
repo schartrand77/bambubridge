@@ -47,3 +47,46 @@ async def test_connect_lock(monkeypatch, state_module):
 
     assert calls == 1
     assert c1 is c2
+
+
+@pytest.mark.asyncio
+async def test_connect_coroutine(monkeypatch, state_module):
+    called = False
+
+    class AsyncClient:
+        def __init__(self, *args, **kwargs):
+            self.host = kwargs["host"]
+            self.connected = False
+
+        async def connect(self, callback=None):
+            nonlocal called
+            called = True
+            self.connected = True
+
+    async def fail_to_thread(*args, **kwargs):
+        raise AssertionError("to_thread should not be called")
+
+    monkeypatch.setattr(state_module, "BambuClient", AsyncClient)
+    monkeypatch.setattr(state_module.asyncio, "to_thread", fail_to_thread)
+
+    c = await state_module._connect("p1")
+    assert called is True
+    assert c.connected is True
+
+
+@pytest.mark.asyncio
+async def test_connect_timeout_configurable(monkeypatch, state_module):
+    class NeverClient:
+        def __init__(self, *args, **kwargs):
+            self.host = kwargs["host"]
+            self.connected = False
+
+        def connect(self, callback=None):
+            pass
+
+    monkeypatch.setattr(state_module, "BambuClient", NeverClient)
+
+    with pytest.raises(RuntimeError):
+        await state_module._connect(
+            "p1", raise_http=False, wait_interval=0.01, max_wait=0.02
+        )

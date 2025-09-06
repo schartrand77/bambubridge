@@ -34,6 +34,8 @@
   <Config Name="BAMBULAB_TYPES" Target="BAMBULAB_TYPES" Default="babu=X1C" Mode="env" Description="(optional) name=model (X1C/P1S/A1...)" Type="Variable" Display="advanced" Required="false" Mask="false"/>
   <Config Name="BAMBULAB_REGION" Target="BAMBULAB_REGION" Default="US" Mode="env" Description="Region for pybambu ctor" Type="Variable" Display="advanced" Required="false" Mask="false"/>
   <Config Name="BAMBULAB_AUTOCONNECT" Target="BAMBULAB_AUTOCONNECT" Default="1" Mode="env" Description="1=autoconnect on startup; 0=lazy" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="BAMBULAB_CONNECT_INTERVAL" Target="BAMBULAB_CONNECT_INTERVAL" Default="0.1" Mode="env" Description="Seconds between connection status checks" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="BAMBULAB_CONNECT_TIMEOUT" Target="BAMBULAB_CONNECT_TIMEOUT" Default="5" Mode="env" Description="Total seconds to wait for connection" Type="Variable" Display="advanced" Required="false" Mask="false"/>
   <Config Name="PYTHONUNBUFFERED" Target="PYTHONUNBUFFERED" Default="1" Mode="env" Description="leave as 1" Type="Variable" Display="advanced" Required="false" Mask="false"/>
 
   <!-- Expose the host port in the UI -->
