@@ -238,6 +238,28 @@ async def _startup():
             log.warning("warm(%s) error: %s", n, e)
     await asyncio.gather(*[warm(n) for n in PRINTERS])
 
+
+# ---- graceful shutdown -------------------------------------------------------
+@app.on_event("shutdown")
+async def _shutdown() -> None:
+    clients_snapshot, _ = await state.snapshot()
+    for name, client in clients_snapshot.items():
+        fn = _pick(client, ("disconnect", "close"))
+        if not fn:
+            continue
+        try:
+            if inspect.iscoroutinefunction(fn):
+                await fn()
+            else:
+                fn()
+            log.info("shutdown: disconnected %s", name)
+        except Exception as e:
+            log.warning("shutdown: disconnect(%s) failed: %s", name, e)
+    async with state.lock:
+        state.clients.clear()
+        state.last_error.clear()
+
+
 # ---- routes ------------------------------------------------------------------
 @app.get("/healthz")
 async def healthz():
