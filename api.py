@@ -135,6 +135,26 @@ def _pick(obj: Any, names: tuple[str, ...]) -> Optional[Callable]:
     return None
 
 
+async def _run_printer_action(
+    name: str, action: str, methods: tuple[str, ...]
+) -> ActionResult:
+    """Locate and invoke an action on a printer client or its device."""
+
+    c = await _connect(name)
+    fn = _pick(c, methods) or _pick(c.get_device(), methods)
+    if not fn:
+        raise HTTPException(501, f"pybambu missing {action} API")
+    try:
+        if inspect.iscoroutinefunction(fn):
+            res = await fn()
+        else:
+            res = await asyncio.to_thread(fn)
+    except Exception as e:  # pragma: no cover - network failures
+        raise HTTPException(502, detail=f"{action} failed: {type(e).__name__}: {e}")
+    data = res if isinstance(res, dict) else {"response": res}
+    return ActionResult(result=data)
+
+
 # ---- request models -----------------------------------------------------------
 
 
@@ -268,59 +288,17 @@ async def start_print(name: str, job: JobRequest) -> ActionResult:
 
 @app.post("/api/{name}/pause", dependencies=[Depends(require_api_key)])
 async def pause(name: str) -> ActionResult:
-    c = await _connect(name)
-    fn = _pick(c, ("pause_print", "pause")) or _pick(
-        c.get_device(), ("pause_print", "pause")
-    )
-    if not fn:
-        raise HTTPException(501, "pybambu missing pause API")
-    try:
-        if inspect.iscoroutinefunction(fn):
-            res = await fn()
-        else:
-            res = await asyncio.to_thread(fn)
-    except Exception as e:  # pragma: no cover
-        raise HTTPException(502, detail=f"pause failed: {type(e).__name__}: {e}")
-    data = res if isinstance(res, dict) else {"response": res}
-    return ActionResult(result=data)
+    return await _run_printer_action(name, "pause", ("pause_print", "pause"))
 
 
 @app.post("/api/{name}/resume", dependencies=[Depends(require_api_key)])
 async def resume(name: str) -> ActionResult:
-    c = await _connect(name)
-    fn = _pick(c, ("resume_print", "resume")) or _pick(
-        c.get_device(), ("resume_print", "resume")
-    )
-    if not fn:
-        raise HTTPException(501, "pybambu missing resume API")
-    try:
-        if inspect.iscoroutinefunction(fn):
-            res = await fn()
-        else:
-            res = await asyncio.to_thread(fn)
-    except Exception as e:  # pragma: no cover
-        raise HTTPException(502, detail=f"resume failed: {type(e).__name__}: {e}")
-    data = res if isinstance(res, dict) else {"response": res}
-    return ActionResult(result=data)
+    return await _run_printer_action(name, "resume", ("resume_print", "resume"))
 
 
 @app.post("/api/{name}/stop", dependencies=[Depends(require_api_key)])
 async def stop(name: str) -> ActionResult:
-    c = await _connect(name)
-    fn = _pick(c, ("stop_print", "stop")) or _pick(
-        c.get_device(), ("stop_print", "stop")
-    )
-    if not fn:
-        raise HTTPException(501, "pybambu missing stop API")
-    try:
-        if inspect.iscoroutinefunction(fn):
-            res = await fn()
-        else:
-            res = await asyncio.to_thread(fn)
-    except Exception as e:  # pragma: no cover
-        raise HTTPException(502, detail=f"stop failed: {type(e).__name__}: {e}")
-    data = res if isinstance(res, dict) else {"response": res}
-    return ActionResult(result=data)
+    return await _run_printer_action(name, "stop", ("stop_print", "stop"))
 
 
 @app.get("/api/{name}/camera", dependencies=[Depends(require_api_key)])
