@@ -41,7 +41,12 @@ class _RLock:
         self._count = 0
 
     async def acquire(self) -> None:
-        current = asyncio.current_task()
+        try:
+            current = asyncio.current_task()
+        except RuntimeError:
+            current = None
+        if current is None:
+            raise RuntimeError("RLock used outside running event loop")
         if self._owner is current:
             self._count += 1
             return
@@ -50,7 +55,12 @@ class _RLock:
         self._count = 1
 
     def release(self) -> None:
-        current = asyncio.current_task()
+        try:
+            current = asyncio.current_task()
+        except RuntimeError:
+            current = None
+        if current is None:
+            raise RuntimeError("RLock used outside running event loop")
         if self._owner is not current:
             raise RuntimeError("RLock release by non-owner")
         self._count -= 1
