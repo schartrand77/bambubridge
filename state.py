@@ -6,6 +6,7 @@ import asyncio
 import inspect
 import logging
 import time
+from contextlib import asynccontextmanager
 from typing import Dict, Optional
 
 from fastapi import HTTPException
@@ -31,31 +32,83 @@ except Exception as e:  # pragma: no cover - dependency error
     raise RuntimeError(f"Failed to import pybambu: {e}")
 
 
+class _RLock:
+    """A minimal re-entrant lock for asyncio tasks."""
+
+    def __init__(self) -> None:
+        self._lock = asyncio.Lock()
+        self._owner: Optional[asyncio.Task] = None
+        self._count = 0
+
+    async def acquire(self) -> None:
+        current = asyncio.current_task()
+        if self._owner is current:
+            self._count += 1
+            return
+        await self._lock.acquire()
+        self._owner = current
+        self._count = 1
+
+    def release(self) -> None:
+        current = asyncio.current_task()
+        if self._owner is not current:
+            raise RuntimeError("RLock release by non-owner")
+        self._count -= 1
+        if self._count == 0:
+            self._owner = None
+            self._lock.release()
+
+    async def __aenter__(self):  # pragma: no cover - trivial
+        await self.acquire()
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb) -> None:  # pragma: no cover - trivial
+        self.release()
+
+
 class PrinterState:
     """Holds printer connection state with concurrency guards."""
 
     def __init__(self) -> None:
         self.clients: Dict[str, BambuClient] = {}
         self.last_error: Dict[str, str] = {}
-        self.lock = asyncio.Lock()
+        # Write operations use a plain asyncio.Lock while reads share an
+        # async re-entrant lock allowing concurrent access.
+        self.write_lock = asyncio.Lock()
+        self._read_lock = _RLock()
+        self._readers = 0
         self.connect_locks: Dict[str, asyncio.Lock] = {}
 
+    @asynccontextmanager
+    async def read_lock(self):
+        async with self._read_lock:
+            self._readers += 1
+            if self._readers == 1:
+                await self.write_lock.acquire()
+        try:
+            yield
+        finally:
+            async with self._read_lock:
+                self._readers -= 1
+                if self._readers == 0:
+                    self.write_lock.release()
+
     async def get_client(self, name: str) -> Optional[BambuClient]:
-        async with self.lock:
+        async with self.read_lock():
             return self.clients.get(name)
 
     async def set_client(self, name: str, client: BambuClient) -> None:
-        async with self.lock:
+        async with self.write_lock:
             self.clients[name] = client
             self.last_error.pop(name, None)
 
     async def set_error(self, name: str, detail: str) -> None:
-        async with self.lock:
+        async with self.write_lock:
             self.last_error[name] = detail
 
     async def get_connect_lock(self, name: str) -> asyncio.Lock:
         """Return (and create if needed) a lock for the given printer."""
-        async with self.lock:
+        async with self.write_lock:
             lock = self.connect_locks.get(name)
             if lock is None:
                 lock = asyncio.Lock()
@@ -63,11 +116,11 @@ class PrinterState:
             return lock
 
     async def snapshot(self) -> tuple[Dict[str, BambuClient], Dict[str, str]]:
-        async with self.lock:
+        async with self.read_lock():
             return dict(self.clients), dict(self.last_error)
 
     async def clear(self) -> None:
-        async with self.lock:
+        async with self.write_lock:
             self.clients.clear()
             self.last_error.clear()
             self.connect_locks.clear()

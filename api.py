@@ -220,7 +220,7 @@ async def disconnect_now(name: str) -> ActionResult:
             await asyncio.to_thread(fn)
     except Exception as e:  # pragma: no cover - network failures
         raise HTTPException(502, detail=f"disconnect failed: {type(e).__name__}: {e}")
-    async with state.lock:
+    async with state.write_lock:
         state.clients.pop(name, None)
     return ActionResult(result={"name": name})
 
