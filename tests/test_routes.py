@@ -27,11 +27,22 @@ def test_connect_status_and_actions(client):
         headers=headers,
     )
     assert res.status_code == 200
-    assert res.json()["started"] == "http://example.com/file.gcode"
+    data = res.json()
+    assert data["ok"] is True
+    assert data["result"]["started"] == "http://example.com/file.gcode"
 
-    assert client.post("/api/p1/pause", headers=headers).json()["paused"] is True
-    assert client.post("/api/p1/resume", headers=headers).json()["resumed"] is True
-    assert client.post("/api/p1/stop", headers=headers).json()["stopped"] is True
+    assert (
+        client.post("/api/p1/pause", headers=headers).json()["result"]["paused"]
+        is True
+    )
+    assert (
+        client.post("/api/p1/resume", headers=headers).json()["result"]["resumed"]
+        is True
+    )
+    assert (
+        client.post("/api/p1/stop", headers=headers).json()["result"]["stopped"]
+        is True
+    )
 
 
 def test_protected_route_requires_key(client):
@@ -45,7 +56,9 @@ def test_disconnect(client):
     assert client.post("/api/p1/connect", headers=headers).status_code == 200
     res = client.post("/api/p1/disconnect", headers=headers)
     assert res.status_code == 200
-    assert res.json()["ok"] is True
+    data = res.json()
+    assert data["ok"] is True
+    assert data["result"]["name"] == "p1"
 
     data = client.get("/api/printers").json()
     assert data[0]["connected"] is False
