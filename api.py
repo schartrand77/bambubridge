@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from typing import Dict, Any, Optional, Callable, AsyncGenerator, Generator
 
 from fastapi import FastAPI, HTTPException, Depends, Security
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.docs import (
@@ -177,6 +177,13 @@ class JobRequest(BaseModel):
     thmf_url: Optional[HttpUrl] = None
 
 
+class StatusResult(BaseModel):
+    """Standard response wrapper for status information."""
+
+    ok: bool = True
+    status: Dict[str, Any] = Field(default_factory=dict)
+
+
 class ActionResult(BaseModel):
     """Standard response wrapper for printer actions."""
 
@@ -188,9 +195,9 @@ class ActionResult(BaseModel):
 
 
 @app.get("/healthz")
-async def healthz():
+async def healthz() -> StatusResult:
     """Return API health status and list of known printers."""
-    return {"ok": True, "printers": list(PRINTERS.keys())}
+    return StatusResult(status={"printers": list(PRINTERS.keys())})
 
 
 @app.get("/api/printers")
@@ -213,10 +220,12 @@ async def list_printers():
 
 
 @app.post("/api/{name}/connect", dependencies=[Depends(require_api_key)])
-async def connect_now(name: str):
+async def connect_now(name: str) -> StatusResult:
     """Connect to a printer and return its details."""
     c = await _connect(name)
-    return {"ok": True, "name": name, "host": c.host, "serial": SERIALS.get(name)}
+    return StatusResult(
+        status={"name": name, "host": c.host, "serial": SERIALS.get(name)}
+    )
 
 
 @app.post("/api/{name}/disconnect", dependencies=[Depends(require_api_key)])
@@ -242,7 +251,7 @@ async def disconnect_now(name: str) -> ActionResult:
 
 
 @app.get("/api/{name}/status")
-async def status(name: str):
+async def status(name: str) -> StatusResult:
     """Return status information for a printer as JSON."""
     c = await _connect(name)
     dev = c.get_device()
@@ -259,7 +268,7 @@ async def status(name: str):
             data["push_all"] = dev.push_all_data
     except Exception as e:  # pragma: no cover - pybambu variations
         data["note"] = f"status extras unavailable: {type(e).__name__}"
-    return JSONResponse(data)
+    return StatusResult(status=data)
 
 
 @app.post("/api/{name}/print", dependencies=[Depends(require_api_key)])
