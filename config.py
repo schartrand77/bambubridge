@@ -78,6 +78,7 @@ def _validate_env() -> None:
     if missing_required:
         for name, env in missing_required:
             log.error("Missing %s entry for '%s'", env, name)
-        raise RuntimeError(
-            "Printer configuration incomplete; check environment variables"
+        details = "; ".join(
+            f"Missing {env} for {name}" for name, env in missing_required
         )
+        raise RuntimeError(f"Printer configuration incomplete: {details}")
