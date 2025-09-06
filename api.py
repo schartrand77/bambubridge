@@ -19,6 +19,11 @@ from fastapi.openapi.docs import (
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel, HttpUrl, Field
 
+try:  # pragma: no cover - import resolution differs for packaging
+    from . import __version__
+except Exception:  # pragma: no cover - fallback for direct execution
+    from __init__ import __version__
+
 from config import (
     PRINTERS,
     SERIALS,
@@ -71,7 +76,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 # ---- app ----------------------------------------------------------------------
 app = FastAPI(
     title="Bambu LAN Bridge",
-    version="1.6",
+    version=__version__,
     docs_url=None,
     redoc_url="/redoc",
     openapi_url="/openapi.json",
