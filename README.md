@@ -14,11 +14,14 @@ An Unraid Docker template is provided in [`bambubridge.xml`](bambubridge.xml). T
    - `BAMBULAB_SERIALS`
    - `BAMBULAB_LAN_KEYS`
    - `BAMBULAB_API_KEY` (value clients must supply in the `X-API-Key` header)
-   - optional: `BAMBULAB_TYPES`, `BAMBULAB_REGION`, `BAMBULAB_AUTOCONNECT`, `BAMBULAB_ALLOW_ORIGINS`, `BAMBULAB_LOG_LEVEL`, `BAMBULAB_CONNECT_INTERVAL`, `BAMBULAB_CONNECT_TIMEOUT`
+   - optional: `BAMBULAB_TYPES`, `BAMBULAB_REGION`, `BAMBULAB_AUTOCONNECT`, `BAMBULAB_ALLOW_ORIGINS`, `BAMBULAB_LOG_LEVEL`, `BAMBULAB_CONNECT_INTERVAL`, `BAMBULAB_CONNECT_TIMEOUT`, `BAMBULAB_EMAIL`, `BAMBULAB_USERNAME`, `BAMBULAB_AUTH_TOKEN`
      - `BAMBULAB_ALLOW_ORIGINS` defaults to only `http://localhost` and `http://127.0.0.1`
      - `BAMBULAB_LOG_LEVEL` controls logging verbosity (default `INFO`)
      - `BAMBULAB_CONNECT_INTERVAL` seconds between post-connect status checks (default `0.1`)
      - `BAMBULAB_CONNECT_TIMEOUT` total seconds to wait for connection (default `5`)
+     - `BAMBULAB_EMAIL` email address for a Bambu Lab account
+     - `BAMBULAB_USERNAME` username for the Bambu Lab account
+     - `BAMBULAB_AUTH_TOKEN` authentication token associated with the account
 3. After the container starts, open `http://<server-ip>:8288/docs` for the web UI and API documentation.
 
 A standard [`Dockerfile`](Dockerfile) is also included if you wish to build the image yourself.
