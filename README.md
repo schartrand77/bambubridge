@@ -32,6 +32,15 @@ curl -X POST http://<server-ip>:8288/api/<printer>/print \
 
 `gcode_url` is required; `thmf_url` may be omitted.
 
+## Development
+
+Install the development dependencies to run the test suite:
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
