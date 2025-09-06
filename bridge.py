@@ -336,6 +336,27 @@ async def connect_now(name: str):
     c = await _connect(name)
     return {"ok": True, "name": name, "host": c.host, "serial": SERIALS.get(name)}
 
+
+@app.post("/api/{name}/disconnect", dependencies=[Depends(require_api_key)])
+async def disconnect_now(name: str):
+    _require_known(name)
+    c = await state.get_client(name)
+    if not c:
+        raise HTTPException(404, "Not connected")
+    fn = _pick(c, ("disconnect", "close"))
+    if not fn:
+        raise HTTPException(501, "pybambu missing disconnect API")
+    try:
+        if inspect.iscoroutinefunction(fn):
+            await fn()
+        else:
+            await asyncio.to_thread(fn)
+    except Exception as e:
+        raise HTTPException(502, detail=f"disconnect failed: {type(e).__name__}: {e}")
+    async with state.lock:
+        state.clients.pop(name, None)
+    return {"ok": True, "name": name}
+
 @app.get("/api/{name}/status")
 async def status(name: str):
     c = await _connect(name)
