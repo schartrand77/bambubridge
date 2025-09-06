@@ -1,5 +1,5 @@
 def test_camera_stream(client, monkeypatch):
-    from bridge import BambuClient
+    from state import BambuClient
 
     chunks = [b"chunk1", b"chunk2"]
 

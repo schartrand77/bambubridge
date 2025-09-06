@@ -8,19 +8,24 @@ import pytest
 
 
 @pytest.fixture
-def bridge_autoconnect(monkeypatch):
+def api_autoconnect(monkeypatch):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     monkeypatch.setenv("BAMBULAB_PRINTERS", "p1@127.0.0.1")
     monkeypatch.setenv("BAMBULAB_SERIALS", "p1=SERIAL1")
     monkeypatch.setenv("BAMBULAB_LAN_KEYS", "p1=LANKEY1")
     monkeypatch.setenv("BAMBULAB_TYPES", "p1=X1C")
     monkeypatch.setenv("BAMBULAB_AUTOCONNECT", "1")
-    import bridge as module
-    importlib.reload(module)
-    return module
+    import config
+    import state
+    import api
+    importlib.reload(config)
+    importlib.reload(state)
+    importlib.reload(api)
+    return state, api
 
 
-def test_autoconnect_and_shutdown(monkeypatch, bridge_autoconnect):
+def test_autoconnect_and_shutdown(monkeypatch, api_autoconnect):
+    state, api = api_autoconnect
     disconnected = []
 
     class FakeClient:
@@ -35,11 +40,11 @@ def test_autoconnect_and_shutdown(monkeypatch, bridge_autoconnect):
             self.connected = False
             disconnected.append(self.host)
 
-    monkeypatch.setattr(bridge_autoconnect, "BambuClient", FakeClient)
+    monkeypatch.setattr(state, "BambuClient", FakeClient)
 
-    with TestClient(bridge_autoconnect.app):
-        assert "p1" in bridge_autoconnect.state.clients
-        assert bridge_autoconnect.state.clients["p1"].connected is True
+    with TestClient(api.app):
+        assert "p1" in state.state.clients
+        assert state.state.clients["p1"].connected is True
 
-    assert bridge_autoconnect.state.clients == {}
+    assert state.state.clients == {}
     assert len(disconnected) == 1

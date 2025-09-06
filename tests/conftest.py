@@ -7,20 +7,34 @@ from fastapi.testclient import TestClient
 
 
 @pytest.fixture
-def bridge(monkeypatch):
+def cfg(monkeypatch):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     monkeypatch.setenv("BAMBULAB_PRINTERS", "p1@127.0.0.1")
     monkeypatch.setenv("BAMBULAB_SERIALS", "p1=SERIAL1")
     monkeypatch.setenv("BAMBULAB_LAN_KEYS", "p1=LANKEY1")
     monkeypatch.setenv("BAMBULAB_TYPES", "p1=X1C")
     monkeypatch.setenv("BAMBULAB_API_KEY", "secret")
-    import bridge as module
-    importlib.reload(module)
-    return module
+    import config
+    importlib.reload(config)
+    return config
 
 
 @pytest.fixture
-def client(bridge, monkeypatch):
+def state_module(cfg):
+    import state
+    importlib.reload(state)
+    return state
+
+
+@pytest.fixture
+def api_module(state_module):
+    import api
+    importlib.reload(api)
+    return api
+
+
+@pytest.fixture
+def client(api_module, state_module, monkeypatch):
     class FakeDev:
         get_version_data = {"firmware": "1.0"}
         push_all_data = {"state": "ok"}
@@ -58,6 +72,6 @@ def client(bridge, monkeypatch):
         def disconnect(self):
             self.connected = False
 
-    monkeypatch.setattr(bridge, "BambuClient", FakeClient)
-    with TestClient(bridge.app) as tc:
+    monkeypatch.setattr(state_module, "BambuClient", FakeClient)
+    with TestClient(api_module.app) as tc:
         yield tc
