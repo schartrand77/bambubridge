@@ -1,5 +1,4 @@
 import importlib
-import sys
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -9,7 +8,7 @@ import pytest
 
 @pytest.fixture
 def api_autoconnect(monkeypatch):
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    monkeypatch.syspath_prepend(str(Path(__file__).resolve().parent.parent))
     monkeypatch.setenv("BAMBULAB_PRINTERS", "p1@127.0.0.1")
     monkeypatch.setenv("BAMBULAB_SERIALS", "p1=SERIAL1")
     monkeypatch.setenv("BAMBULAB_LAN_KEYS", "p1=LANKEY1")
