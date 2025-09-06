@@ -1,13 +1,24 @@
-def test_camera_stream(client, monkeypatch):
+import pytest
+
+
+@pytest.mark.parametrize("async_impl", [False, True])
+def test_camera_stream(client, monkeypatch, async_impl):
     from state import BambuClient
 
     chunks = [b"chunk1", b"chunk2"]
 
-    def fake_camera_mjpeg(self):
-        def gen():
-            for c in chunks:
-                yield c
-        return gen()
+    if async_impl:
+        async def fake_camera_mjpeg(self):
+            async def gen():
+                for c in chunks:
+                    yield c
+            return gen()
+    else:
+        def fake_camera_mjpeg(self):
+            def gen():
+                for c in chunks:
+                    yield c
+            return gen()
 
     monkeypatch.setattr(BambuClient, "camera_mjpeg", fake_camera_mjpeg)
 

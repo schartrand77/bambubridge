@@ -303,6 +303,12 @@ async def stop(name: str) -> ActionResult:
 
 @app.get("/api/{name}/camera", dependencies=[Depends(require_api_key)])
 async def camera(name: str):
+    """Stream printer camera as MJPEG.
+
+    Supports both sync and async ``camera_mjpeg`` implementations provided by
+    :mod:`pybambu`.
+    """
+
     c = await _connect(name)
     gen = getattr(c, "camera_mjpeg", None)
     if not callable(gen):
@@ -312,6 +318,8 @@ async def camera(name: str):
         candidate = gen
         if inspect.isfunction(gen) or inspect.ismethod(gen):
             candidate = gen()
+            if inspect.isawaitable(candidate):
+                candidate = await candidate
 
         if inspect.isasyncgen(candidate):
             async def astream() -> AsyncGenerator[bytes, None]:
