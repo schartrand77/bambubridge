@@ -31,3 +31,7 @@ curl -X POST http://<server-ip>:8288/api/<printer>/print \
 ```
 
 `gcode_url` is required; `thmf_url` may be omitted.
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
