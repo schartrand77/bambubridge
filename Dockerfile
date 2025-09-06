@@ -1,8 +1,9 @@
 FROM python:3.12-slim
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 PYTHONPATH=/app
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PYTHONPATH=/app
 WORKDIR /app
+# Install runtime dependencies only
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 COPY bridge.py .
 RUN useradd -u 10001 -m appuser
 USER appuser
