@@ -34,6 +34,14 @@ curl -X POST http://<server-ip>:8288/api/<printer>/print \
 
 `gcode_url` is required; `thmf_url` may be omitted.
 
+### Camera streaming
+
+To stream live MJPEG from a printer, send a `GET` request to
+`/api/{name}/camera`.  The underlying `pybambu` client may expose
+`camera_mjpeg` as either a synchronous or asynchronous function returning a
+generator.  `bambubridge` detects both forms and will await an async
+implementation automatically.
+
 ## Development
 
 Install the development dependencies to run the test suite:
