@@ -15,3 +15,16 @@ An Unraid Docker template is provided in [`bambubridge.xml`](bambubridge.xml). T
 3. After the container starts, open `http://<server-ip>:8288/docs` for the web UI and API documentation.
 
 A standard [`Dockerfile`](Dockerfile) is also included if you wish to build the image yourself.
+
+## API
+
+To start a print job, POST to `/api/{name}/print` with a JSON body matching the
+`JobRequest` model:
+
+```bash
+curl -X POST http://<server-ip>:8288/api/<printer>/print \
+  -H 'Content-Type: application/json' \
+  -d '{"gcode_url": "http://example.com/file.gcode", "thmf_url": "http://example.com/file.thmf"}'
+```
+
+`gcode_url` is required; `thmf_url` may be omitted.
