@@ -74,6 +74,3 @@ def _validate_env() -> None:
         raise RuntimeError(
             "Printer configuration incomplete; check environment variables"
         )
-
-
-_validate_env()
