@@ -51,6 +51,9 @@ AUTOCONNECT = os.getenv("BAMBULAB_AUTOCONNECT", "0").lower() in {
     "on",
 }
 
+CONNECT_INTERVAL = float(os.getenv("BAMBULAB_CONNECT_INTERVAL", "0.1"))
+CONNECT_TIMEOUT = float(os.getenv("BAMBULAB_CONNECT_TIMEOUT", "5"))
+
 DEFAULT_ORIGINS = ["http://localhost", "http://127.0.0.1"]
 ALLOW_ORIGINS = [
     o.strip() for o in os.getenv("BAMBULAB_ALLOW_ORIGINS", "").split(",") if o.strip()

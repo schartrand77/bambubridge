@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import logging
+import time
 from typing import Dict, Optional
 
 from fastapi import HTTPException
@@ -17,6 +19,8 @@ from config import (
     EMAIL,
     USERNAME,
     AUTH_TOKEN,
+    CONNECT_INTERVAL,
+    CONNECT_TIMEOUT,
 )
 
 log = logging.getLogger("bambubridge")
@@ -81,7 +85,13 @@ def _require_known(name: str) -> None:
         raise HTTPException(400, f"Missing access code for '{name}' (set BAMBULAB_LAN_KEYS)")
 
 
-async def _connect(name: str, raise_http: bool = True) -> BambuClient:
+async def _connect(
+    name: str,
+    raise_http: bool = True,
+    *,
+    wait_interval: float = CONNECT_INTERVAL,
+    max_wait: float = CONNECT_TIMEOUT,
+) -> BambuClient:
     """Ensure a connected BambuClient; return it or raise HTTP error."""
     _require_known(name)
 
@@ -112,12 +122,16 @@ async def _connect(name: str, raise_http: bool = True) -> BambuClient:
                 username=USERNAME,
                 auth_token=AUTH_TOKEN,
             )
-            await asyncio.to_thread(c.connect, callback=lambda evt: None)
 
-            for _ in range(50):
-                if c.connected:
-                    break
-                await asyncio.sleep(0.1)
+            connect_method = c.connect
+            if inspect.iscoroutinefunction(connect_method):
+                await connect_method(callback=lambda evt: None)
+            else:
+                await asyncio.to_thread(connect_method, callback=lambda evt: None)
+
+            deadline = time.monotonic() + max_wait
+            while not c.connected and time.monotonic() < deadline:
+                await asyncio.sleep(wait_interval)
 
             if not c.connected:
                 raise RuntimeError("Printer MQTT connected=False after wait")
