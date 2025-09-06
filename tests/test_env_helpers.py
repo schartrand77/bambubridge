@@ -28,6 +28,20 @@ def test_kv_warn(monkeypatch, cfg, caplog):
     assert "oops" in caplog.text
 
 
+def test_pairs_duplicate_warn(monkeypatch, cfg, caplog):
+    monkeypatch.setenv("TEST_DUP_PAIRS", "a@1;a@2")
+    with caplog.at_level(logging.WARNING):
+        assert cfg._pairs("TEST_DUP_PAIRS") == {"a": "2"}
+    assert "Duplicate TEST_DUP_PAIRS entry for 'a'" in caplog.text
+
+
+def test_kv_duplicate_warn(monkeypatch, cfg, caplog):
+    monkeypatch.setenv("TEST_DUP_KV", "a=1;a=2")
+    with caplog.at_level(logging.WARNING):
+        assert cfg._kv("TEST_DUP_KV") == {"a": "2"}
+    assert "Duplicate TEST_DUP_KV entry for 'a'" in caplog.text
+
+
 def test_get_float(monkeypatch, cfg):
     monkeypatch.setenv("TEST_FLOAT", "1.5")
     assert cfg._get_float("TEST_FLOAT", "2") == 1.5

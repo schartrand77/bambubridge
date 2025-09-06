@@ -12,11 +12,16 @@ log = logging.getLogger("bambubridge")
 def _pairs(env: str) -> Dict[str, str]:
     """Parse "name@host;other@host2" strings into dicts."""
     out: Dict[str, str] = {}
+    seen: set[str] = set()
     raw = os.getenv(env, "")
     for part in filter(None, raw.split(";")):
         if "@" in part:
             n, h = part.split("@", 1)
-            out[n.strip()] = h.strip()
+            key = n.strip()
+            if key in seen:
+                log.warning("Duplicate %s entry for '%s'", env, key)
+            seen.add(key)
+            out[key] = h.strip()
         else:
             log.warning("Invalid printer pair segment '%s'", part)
     return out
@@ -25,11 +30,16 @@ def _pairs(env: str) -> Dict[str, str]:
 def _kv(env: str) -> Dict[str, str]:
     """Parse "key=value;other=value2" strings into dicts."""
     out: Dict[str, str] = {}
+    seen: set[str] = set()
     raw = os.getenv(env, "")
     for part in filter(None, raw.split(";")):
         if "=" in part:
             k, v = part.split("=", 1)
-            out[k.strip()] = v.strip()
+            key = k.strip()
+            if key in seen:
+                log.warning("Duplicate %s entry for '%s'", env, key)
+            seen.add(key)
+            out[key] = v.strip()
         else:
             log.warning("Invalid key/value segment '%s'", part)
     return out
