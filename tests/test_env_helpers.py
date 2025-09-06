@@ -28,6 +28,25 @@ def test_kv_warn(monkeypatch, cfg, caplog):
     assert "oops" in caplog.text
 
 
+def test_get_float(monkeypatch, cfg):
+    monkeypatch.setenv("TEST_FLOAT", "1.5")
+    assert cfg._get_float("TEST_FLOAT", "2") == 1.5
+
+
+def test_get_float_fallback(monkeypatch, cfg, caplog):
+    monkeypatch.setenv("TEST_FLOAT", "bad")
+    with caplog.at_level(logging.ERROR):
+        assert cfg._get_float("TEST_FLOAT", "2") == 2.0
+    assert "Invalid TEST_FLOAT value" in caplog.text
+
+
+def test_get_float_default_invalid(monkeypatch, cfg):
+    monkeypatch.setenv("TEST_FLOAT", "bad")
+    with pytest.raises(RuntimeError) as exc:
+        cfg._get_float("TEST_FLOAT", "also-bad")
+    assert "Invalid default for TEST_FLOAT" in str(exc.value)
+
+
 def test_validate_env_missing(cfg, monkeypatch):
     monkeypatch.setattr(cfg, "PRINTERS", {"p1": "h"})
     monkeypatch.setattr(cfg, "SERIALS", {})
