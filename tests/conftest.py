@@ -55,6 +55,9 @@ def client(bridge, monkeypatch):
                 yield b"frame"
             return gen()
 
+        def disconnect(self):
+            self.connected = False
+
     monkeypatch.setattr(bridge, "BambuClient", FakeClient)
     with TestClient(bridge.app) as tc:
         yield tc

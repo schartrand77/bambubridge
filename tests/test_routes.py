@@ -40,3 +40,18 @@ def test_connect_status_and_actions(client):
 def test_protected_route_requires_key(client):
     res = client.post("/api/p1/connect")
     assert res.status_code == 403
+
+
+def test_disconnect(client):
+    headers = {"X-API-Key": "secret"}
+
+    assert client.post("/api/p1/connect", headers=headers).status_code == 200
+    res = client.post("/api/p1/disconnect", headers=headers)
+    assert res.status_code == 200
+    assert res.json()["ok"] is True
+
+    data = client.get("/api/printers").json()
+    assert data[0]["connected"] is False
+
+    res = client.post("/api/p1/disconnect", headers=headers)
+    assert res.status_code == 404
