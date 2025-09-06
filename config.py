@@ -35,6 +35,21 @@ def _kv(env: str) -> Dict[str, str]:
     return out
 
 
+def _get_float(env: str, default: str) -> float:
+    """Return a float from ``env`` or ``default`` with error handling."""
+    raw = os.getenv(env, default)
+    try:
+        return float(raw)
+    except ValueError:
+        log.error("Invalid %s value %r; using default %s", env, raw, default)
+        try:
+            return float(default)
+        except ValueError as exc:
+            raise RuntimeError(
+                f"Invalid default for {env}: {default}"
+            ) from exc
+
+
 PRINTERS = _pairs("BAMBULAB_PRINTERS")
 SERIALS = _kv("BAMBULAB_SERIALS")
 LAN_KEYS = _kv("BAMBULAB_LAN_KEYS")
@@ -51,8 +66,8 @@ AUTOCONNECT = os.getenv("BAMBULAB_AUTOCONNECT", "0").lower() in {
     "on",
 }
 
-CONNECT_INTERVAL = float(os.getenv("BAMBULAB_CONNECT_INTERVAL", "0.1"))
-CONNECT_TIMEOUT = float(os.getenv("BAMBULAB_CONNECT_TIMEOUT", "5"))
+CONNECT_INTERVAL = _get_float("BAMBULAB_CONNECT_INTERVAL", "0.1")
+CONNECT_TIMEOUT = _get_float("BAMBULAB_CONNECT_TIMEOUT", "5")
 
 DEFAULT_ORIGINS = ["http://localhost", "http://127.0.0.1"]
 ALLOW_ORIGINS = [
