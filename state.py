@@ -32,60 +32,16 @@ except Exception as e:  # pragma: no cover - dependency error
     raise RuntimeError(f"Failed to import pybambu: {e}")
 
 
-class _RLock:
-    """A minimal re-entrant lock for asyncio tasks."""
-
-    def __init__(self) -> None:
-        self._lock = asyncio.Lock()
-        self._owner: Optional[asyncio.Task] = None
-        self._count = 0
-
-    async def acquire(self) -> None:
-        try:
-            current = asyncio.current_task()
-        except RuntimeError:
-            current = None
-        if current is None:
-            raise RuntimeError("RLock used outside running event loop")
-        if self._owner is current:
-            self._count += 1
-            return
-        await self._lock.acquire()
-        self._owner = current
-        self._count = 1
-
-    def release(self) -> None:
-        try:
-            current = asyncio.current_task()
-        except RuntimeError:
-            current = None
-        if current is None:
-            raise RuntimeError("RLock used outside running event loop")
-        if self._owner is not current:
-            raise RuntimeError("RLock release by non-owner")
-        self._count -= 1
-        if self._count == 0:
-            self._owner = None
-            self._lock.release()
-
-    async def __aenter__(self):  # pragma: no cover - trivial
-        await self.acquire()
-        return self
-
-    async def __aexit__(self, exc_type, exc, tb) -> None:  # pragma: no cover - trivial
-        self.release()
-
-
 class PrinterState:
     """Holds printer connection state with concurrency guards."""
 
     def __init__(self) -> None:
         self.clients: Dict[str, BambuClient] = {}
         self.last_error: Dict[str, str] = {}
-        # Write operations use a plain asyncio.Lock while reads share an
-        # async re-entrant lock allowing concurrent access.
+        # Write operations use a plain asyncio.Lock while reads serialize
+        # access to the reader count with another asyncio.Lock.
         self.write_lock = asyncio.Lock()
-        self._read_lock = _RLock()
+        self._read_lock = asyncio.Lock()
         self._readers = 0
         self.connect_locks: Dict[str, asyncio.Lock] = {}
 
