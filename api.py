@@ -24,6 +24,7 @@ try:  # pragma: no cover - import resolution differs for packaging
 except Exception:  # pragma: no cover - fallback for direct execution
     from __init__ import __version__
 
+import config
 from config import (
     PRINTERS,
     SERIALS,
@@ -39,6 +40,7 @@ log = logging.getLogger("bambubridge")
 # ---- lifespan -----------------------------------------------------------------
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    config._validate_env()
     if not AUTOCONNECT:
         log.info("startup: lazy mode (BAMBULAB_AUTOCONNECT not set)")
     else:
