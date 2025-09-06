@@ -247,19 +247,23 @@ async def _startup():
 # ---- graceful shutdown -------------------------------------------------------
 @app.on_event("shutdown")
 async def _shutdown() -> None:
+    """Disconnect all active printer clients and reset state."""
     clients_snapshot, _ = await state.snapshot()
-    for name, client in clients_snapshot.items():
+
+    async def _disc(name: str, client: BambuClient) -> None:
         fn = _pick(client, ("disconnect", "close"))
         if not fn:
-            continue
+            return
         try:
             if inspect.iscoroutinefunction(fn):
                 await fn()
             else:
-                fn()
+                await asyncio.to_thread(fn)
             log.info("shutdown: disconnected %s", name)
         except Exception as e:
             log.warning("shutdown: disconnect(%s) failed: %s", name, e)
+
+    await asyncio.gather(*(_disc(n, c) for n, c in clients_snapshot.items()))
     await state.clear()
 
 
