@@ -167,6 +167,48 @@ async def _run_printer_action(
     return ActionResult(result=data)
 
 
+async def _invoke_print(
+    fn: Callable[..., Any], gcode_url: str, thmf_url: Optional[str]
+) -> Any:
+    """Invoke a print function with normalized signatures.
+
+    Tries known keyword argument combinations and finally positional arguments,
+    mirroring the variations found across ``pybambu`` versions.
+    """
+
+    combos = []
+    kw1 = {"gcode_url": gcode_url}
+    if thmf_url:
+        kw1["thmf_url"] = thmf_url
+    combos.append({"kwargs": kw1})
+
+    kw2 = {"url": gcode_url}
+    if thmf_url:
+        kw2["thmf_url"] = thmf_url
+    combos.append({"kwargs": kw2})
+
+    args = (gcode_url, thmf_url) if thmf_url else (gcode_url,)
+    combos.append({"args": args})
+
+    is_coro = inspect.iscoroutinefunction(fn)
+    last_exc: Optional[TypeError] = None
+    for combo in combos:
+        try:
+            if "kwargs" in combo:
+                if is_coro:
+                    return await fn(**combo["kwargs"])
+                return await asyncio.to_thread(fn, **combo["kwargs"])
+            else:
+                if is_coro:
+                    return await fn(*combo["args"])
+                return await asyncio.to_thread(fn, *combo["args"])
+        except TypeError as e:
+            last_exc = e
+    if last_exc:
+        raise last_exc
+
+
+
 # ---- request models -----------------------------------------------------------
 
 
@@ -281,32 +323,11 @@ async def start_print(name: str, job: JobRequest) -> ActionResult:
     if not fn:
         raise HTTPException(501, "pybambu missing print-from-url API")
     try:
-        try:
-            kwargs = {"gcode_url": str(job.gcode_url)}
-            if job.thmf_url:
-                kwargs["thmf_url"] = str(job.thmf_url)
-            if inspect.iscoroutinefunction(fn):
-                res = await fn(**kwargs)
-            else:
-                res = await asyncio.to_thread(fn, **kwargs)
-        except TypeError:
-            kwargs = {"url": str(job.gcode_url)}
-            if job.thmf_url:
-                kwargs["thmf_url"] = str(job.thmf_url)
-            try:
-                if inspect.iscoroutinefunction(fn):
-                    res = await fn(**kwargs)
-                else:
-                    res = await asyncio.to_thread(fn, **kwargs)
-            except TypeError:
-                if job.thmf_url:
-                    args = (str(job.gcode_url), str(job.thmf_url))
-                else:
-                    args = (str(job.gcode_url),)
-                if inspect.iscoroutinefunction(fn):
-                    res = await fn(*args)
-                else:
-                    res = await asyncio.to_thread(fn, *args)
+        res = await _invoke_print(
+            fn,
+            str(job.gcode_url),
+            str(job.thmf_url) if job.thmf_url else None,
+        )
     except Exception as e:  # pragma: no cover - pybambu variations
         raise HTTPException(502, detail=f"start_print failed: {type(e).__name__}: {e}")
     data = res if isinstance(res, dict) else {"response": res}
