@@ -2,6 +2,8 @@
 
 FastAPI wrapper for Bambu Lab printers exposed over the local network via [pybambu](https://pypi.org/project/pybambu/).
 
+**Configuration requires setting an API key via the `BAMBULAB_API_KEY` environment variable.**
+
 ## Unraid Docker
 
 An Unraid Docker template is provided in [`bambubridge.xml`](bambubridge.xml). To install:
@@ -11,9 +13,9 @@ An Unraid Docker template is provided in [`bambubridge.xml`](bambubridge.xml). T
    - `BAMBULAB_PRINTERS`
    - `BAMBULAB_SERIALS`
    - `BAMBULAB_LAN_KEYS`
-   - optional: `BAMBULAB_TYPES`, `BAMBULAB_REGION`, `BAMBULAB_AUTOCONNECT`, `BAMBULAB_ALLOW_ORIGINS`, `BAMBULAB_API_KEY`, `BAMBULAB_LOG_LEVEL`, `BAMBULAB_CONNECT_INTERVAL`, `BAMBULAB_CONNECT_TIMEOUT`
+   - `BAMBULAB_API_KEY` (value clients must supply in the `X-API-Key` header)
+   - optional: `BAMBULAB_TYPES`, `BAMBULAB_REGION`, `BAMBULAB_AUTOCONNECT`, `BAMBULAB_ALLOW_ORIGINS`, `BAMBULAB_LOG_LEVEL`, `BAMBULAB_CONNECT_INTERVAL`, `BAMBULAB_CONNECT_TIMEOUT`
      - `BAMBULAB_ALLOW_ORIGINS` defaults to only `http://localhost` and `http://127.0.0.1`
-     - set `BAMBULAB_API_KEY` to require the same value in the `X-API-Key` header on write endpoints
      - `BAMBULAB_LOG_LEVEL` controls logging verbosity (default `INFO`)
      - `BAMBULAB_CONNECT_INTERVAL` seconds between post-connect status checks (default `0.1`)
      - `BAMBULAB_CONNECT_TIMEOUT` total seconds to wait for connection (default `5`)
@@ -22,6 +24,8 @@ An Unraid Docker template is provided in [`bambubridge.xml`](bambubridge.xml). T
 A standard [`Dockerfile`](Dockerfile) is also included if you wish to build the image yourself.
 
 ## API
+
+All write endpoints require an `X-API-Key` header matching the `BAMBULAB_API_KEY` value.
 
 To start a print job, POST to `/api/{name}/print` with a JSON body matching the
 `JobRequest` model:
