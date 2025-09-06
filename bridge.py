@@ -163,6 +163,28 @@ USERNAME   = os.getenv("BAMBULAB_USERNAME", "")
 AUTH_TOKEN = os.getenv("BAMBULAB_AUTH_TOKEN", "")
 AUTOCONNECT= os.getenv("BAMBULAB_AUTOCONNECT", "0").lower() in {"1","true","yes","on"}
 
+
+def _validate_env() -> None:
+    """Cross-check name sets and ensure required fields exist."""
+    names = set(PRINTERS) | set(SERIALS) | set(LAN_KEYS) | set(TYPES)
+    missing_required: list[tuple[str, str]] = []
+    for n in names:
+        if n not in PRINTERS:
+            missing_required.append((n, "BAMBULAB_PRINTERS"))
+        if n not in SERIALS:
+            missing_required.append((n, "BAMBULAB_SERIALS"))
+        if n not in LAN_KEYS:
+            missing_required.append((n, "BAMBULAB_LAN_KEYS"))
+        if n not in TYPES:
+            log.warning("Missing BAMBULAB_TYPES for '%s'; defaulting to X1C", n)
+    if missing_required:
+        for name, env in missing_required:
+            log.error("Missing %s entry for '%s'", env, name)
+        raise RuntimeError("Printer configuration incomplete; check environment variables")
+
+
+_validate_env()
+
 # ---- utility checks ----------------------------------------------------------
 def _require_known(name: str):
     if name not in PRINTERS:
