@@ -325,7 +325,7 @@ async def camera(name: str):
 
     try:
         candidate = gen
-        if inspect.isfunction(gen) or inspect.ismethod(gen):
+        if callable(gen):
             candidate = gen()
             if inspect.isawaitable(candidate):
                 candidate = await candidate
