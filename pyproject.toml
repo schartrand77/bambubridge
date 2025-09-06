@@ -20,6 +20,9 @@ python-dateutil = ">=2.8.2,<3"
 packaging = ">=23,<25"
 swagger-ui-bundle = "==1.1.0"
 
+[project.scripts]
+bambubridge = "bridge:main"
+
 [tool.setuptools]
 py-modules = ["api", "bridge", "config", "state", "__init__"]
 
