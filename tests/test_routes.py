@@ -1,7 +1,7 @@
 def test_health_and_printers(client):
     res = client.get("/healthz")
     assert res.status_code == 200
-    assert res.json()["printers"] == ["p1"]
+    assert res.json()["status"]["printers"] == ["p1"]
 
     res = client.get("/api/printers")
     assert res.status_code == 200
@@ -19,7 +19,7 @@ def test_connect_status_and_actions(client):
 
     res = client.get("/api/p1/status")
     assert res.status_code == 200
-    assert res.json()["connected"] is True
+    assert res.json()["status"]["connected"] is True
 
     res = client.post(
         "/api/p1/print",
