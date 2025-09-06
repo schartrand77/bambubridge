@@ -28,6 +28,8 @@ import logging
 import inspect
 from typing import Dict, Any, Optional, Callable, AsyncGenerator, Generator
 
+from pydantic import BaseModel, HttpUrl
+
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -289,6 +291,16 @@ async def _shutdown() -> None:
     await state.clear()
 
 
+# ---- request models -----------------------------------------------------------
+
+
+class JobRequest(BaseModel):
+    """Request body for starting a print job."""
+
+    gcode_url: HttpUrl
+    thmf_url: Optional[HttpUrl] = None
+
+
 # ---- routes ------------------------------------------------------------------
 @app.get("/healthz")
 async def healthz():
@@ -335,22 +347,30 @@ async def status(name: str):
     return JSONResponse(data)
 
 @app.post("/api/{name}/print")
-async def start_print(name: str, job: Dict[str, Any]):
+async def start_print(name: str, job: JobRequest):
     """
-    Body: {"gcode_url":"http://..." } or {"3mf_url":"http://..."}
+    Body: {"gcode_url": "http://...", "thmf_url": "http://..."}  # thmf_url optional
     """
     c = await _connect(name)
-    url = job.get("gcode_url") or job.get("3mf_url")
-    if not url:
-        raise HTTPException(400, "Provide 'gcode_url' or '3mf_url'")
     fn = _pick(c, ("start_print_from_url", "start_print"))
     if not fn:
         raise HTTPException(501, "pybambu missing print-from-url API")
     try:
         try:
-            return fn(url=url)  # preferred
+            kwargs = {"gcode_url": str(job.gcode_url)}
+            if job.thmf_url:
+                kwargs["thmf_url"] = str(job.thmf_url)
+            return fn(**kwargs)  # preferred
         except TypeError:
-            return fn(url)      # some builds position-only
+            kwargs = {"url": str(job.gcode_url)}
+            if job.thmf_url:
+                kwargs["thmf_url"] = str(job.thmf_url)
+            try:
+                return fn(**kwargs)
+            except TypeError:
+                if job.thmf_url:
+                    return fn(str(job.gcode_url), str(job.thmf_url))
+                return fn(str(job.gcode_url))
     except Exception as e:
         raise HTTPException(502, detail=f"start_print failed: {type(e).__name__}: {e}")
 
