@@ -16,6 +16,7 @@ def cfg(monkeypatch):
     monkeypatch.setenv("BAMBULAB_API_KEY", "secret")
     import config
     importlib.reload(config)
+    config._validate_env()
     return config
 
 

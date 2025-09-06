@@ -19,6 +19,7 @@ def api_autoconnect(monkeypatch):
     import state
     import api
     importlib.reload(config)
+    config._validate_env()
     importlib.reload(state)
     importlib.reload(api)
     return state, api

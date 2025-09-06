@@ -8,6 +8,7 @@ import os
 import uvicorn
 
 from api import app
+import config
 
 
 def main() -> None:
@@ -16,6 +17,7 @@ def main() -> None:
         level=getattr(logging, level_name, logging.INFO),
         format="%(levelname)s:%(name)s:%(message)s",
     )
+    config._validate_env()
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", "8088")))
 
 
