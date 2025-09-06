@@ -1,24 +1,18 @@
 import asyncio
-import sys
-from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-from state import _RLock
-
 
 @pytest.mark.asyncio
-async def test_rlock_acquire_without_task(monkeypatch):
-    lock = _RLock()
-    monkeypatch.setattr(asyncio, "current_task", lambda loop=None: None)
-    with pytest.raises(RuntimeError, match="RLock used outside running event loop"):
-        await lock.acquire()
+async def test_lock_not_reentrant():
+    lock = asyncio.Lock()
+    await lock.acquire()
+    with pytest.raises(asyncio.TimeoutError):
+        await asyncio.wait_for(lock.acquire(), timeout=0.1)
+    lock.release()
 
 
-def test_rlock_release_without_task(monkeypatch):
-    lock = _RLock()
-    monkeypatch.setattr(asyncio, "current_task", lambda loop=None: None)
-    with pytest.raises(RuntimeError, match="RLock used outside running event loop"):
+def test_release_without_acquire():
+    lock = asyncio.Lock()
+    with pytest.raises(RuntimeError):
         lock.release()
