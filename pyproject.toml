@@ -10,15 +10,15 @@ readme = "README.md"
 requires-python = ">=3.10"
 
 [project.dependencies]
-fastapi = "==0.116.1"
-starlette = "==0.47.3"
-uvicorn = { version = "==0.30.6", extras = ["standard"] }
-pybambu = "==1.0.1"
+fastapi = ">=0.116,<0.117"
+starlette = ">=0.47,<0.48"
+uvicorn = { version = ">=0.30,<0.31", extras = ["standard"] }
+pybambu = ">=1.0,<1.1"
 paho-mqtt = "<2"
 requests = ">=2.31,<3"
 python-dateutil = ">=2.8.2,<3"
 packaging = ">=23,<25"
-swagger-ui-bundle = "==1.1.0"
+swagger-ui-bundle = ">=1.1,<1.2"
 
 [project.scripts]
 bambubridge = "bridge:main"
