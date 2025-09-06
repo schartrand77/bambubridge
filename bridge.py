@@ -124,6 +124,11 @@ class PrinterState:
         async with self.lock:
             return dict(self.clients), dict(self.last_error)
 
+    async def clear(self) -> None:
+        async with self.lock:
+            self.clients.clear()
+            self.last_error.clear()
+
 
 state = PrinterState()
 
@@ -255,9 +260,7 @@ async def _shutdown() -> None:
             log.info("shutdown: disconnected %s", name)
         except Exception as e:
             log.warning("shutdown: disconnect(%s) failed: %s", name, e)
-    async with state.lock:
-        state.clients.clear()
-        state.last_error.clear()
+    await state.clear()
 
 
 # ---- routes ------------------------------------------------------------------
