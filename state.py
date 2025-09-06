@@ -34,6 +34,7 @@ class PrinterState:
         self.clients: Dict[str, BambuClient] = {}
         self.last_error: Dict[str, str] = {}
         self.lock = asyncio.Lock()
+        self.connect_locks: Dict[str, asyncio.Lock] = {}
 
     async def get_client(self, name: str) -> Optional[BambuClient]:
         async with self.lock:
@@ -48,6 +49,15 @@ class PrinterState:
         async with self.lock:
             self.last_error[name] = detail
 
+    async def get_connect_lock(self, name: str) -> asyncio.Lock:
+        """Return (and create if needed) a lock for the given printer."""
+        async with self.lock:
+            lock = self.connect_locks.get(name)
+            if lock is None:
+                lock = asyncio.Lock()
+                self.connect_locks[name] = lock
+            return lock
+
     async def snapshot(self) -> tuple[Dict[str, BambuClient], Dict[str, str]]:
         async with self.lock:
             return dict(self.clients), dict(self.last_error)
@@ -56,6 +66,7 @@ class PrinterState:
         async with self.lock:
             self.clients.clear()
             self.last_error.clear()
+            self.connect_locks.clear()
 
 
 state = PrinterState()
@@ -78,41 +89,47 @@ async def _connect(name: str, raise_http: bool = True) -> BambuClient:
     if c and getattr(c, "connected", False):
         return c
 
-    host = PRINTERS[name]
-    serial = SERIALS[name]
-    access = LAN_KEYS[name]
-    dtype = TYPES.get(name, "X1C")
+    lock = await state.get_connect_lock(name)
+    async with lock:
+        c = await state.get_client(name)
+        if c and getattr(c, "connected", False):
+            return c
 
-    try:
-        c = BambuClient(
-            device_type=dtype,
-            serial=serial,
-            host=host,
-            local_mqtt=True,
-            access_code=access,
-            region=REGION,
-            email=EMAIL,
-            username=USERNAME,
-            auth_token=AUTH_TOKEN,
-        )
-        c.connect(callback=lambda evt: None)
+        host = PRINTERS[name]
+        serial = SERIALS[name]
+        access = LAN_KEYS[name]
+        dtype = TYPES.get(name, "X1C")
 
-        for _ in range(50):
-            if c.connected:
-                break
-            await asyncio.sleep(0.1)
+        try:
+            c = BambuClient(
+                device_type=dtype,
+                serial=serial,
+                host=host,
+                local_mqtt=True,
+                access_code=access,
+                region=REGION,
+                email=EMAIL,
+                username=USERNAME,
+                auth_token=AUTH_TOKEN,
+            )
+            c.connect(callback=lambda evt: None)
 
-        if not c.connected:
-            raise RuntimeError("Printer MQTT connected=False after wait")
+            for _ in range(50):
+                if c.connected:
+                    break
+                await asyncio.sleep(0.1)
 
-        await state.set_client(name, c)
-        log.info("connected: %s@%s (%s)", name, host, serial)
-        return c
+            if not c.connected:
+                raise RuntimeError("Printer MQTT connected=False after wait")
 
-    except Exception as e:  # pragma: no cover - network failures
-        detail = f"{type(e).__name__}: {e}"
-        await state.set_error(name, detail)
-        log.warning("connect(%s) failed: %s", name, detail)
-        if raise_http:
-            raise HTTPException(status_code=502, detail=f"connect failed: {detail}")
-        raise
+            await state.set_client(name, c)
+            log.info("connected: %s@%s (%s)", name, host, serial)
+            return c
+
+        except Exception as e:  # pragma: no cover - network failures
+            detail = f"{type(e).__name__}: {e}"
+            await state.set_error(name, detail)
+            log.warning("connect(%s) failed: %s", name, detail)
+            if raise_http:
+                raise HTTPException(status_code=502, detail=f"connect failed: {detail}")
+            raise
