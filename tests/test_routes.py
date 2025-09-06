@@ -1,6 +1,3 @@
-from fastapi import HTTPException
-
-
 def test_health_and_printers(client):
     res = client.get("/healthz")
     assert res.status_code == 200
