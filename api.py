@@ -221,7 +221,9 @@ async def status(name: str):
 @app.post("/api/{name}/print", dependencies=[Depends(require_api_key)])
 async def start_print(name: str, job: JobRequest):
     c = await _connect(name)
-    fn = _pick(c, ("start_print_from_url", "start_print"))
+    fn = _pick(c, ("start_print_from_url", "start_print")) or _pick(
+        c.get_device(), ("start_print_from_url", "start_print")
+    )
     if not fn:
         raise HTTPException(501, "pybambu missing print-from-url API")
     try:
@@ -229,17 +231,25 @@ async def start_print(name: str, job: JobRequest):
             kwargs = {"gcode_url": str(job.gcode_url)}
             if job.thmf_url:
                 kwargs["thmf_url"] = str(job.thmf_url)
-            return fn(**kwargs)
+            if inspect.iscoroutinefunction(fn):
+                return await fn(**kwargs)
+            return await asyncio.to_thread(fn, **kwargs)
         except TypeError:
             kwargs = {"url": str(job.gcode_url)}
             if job.thmf_url:
                 kwargs["thmf_url"] = str(job.thmf_url)
             try:
-                return fn(**kwargs)
+                if inspect.iscoroutinefunction(fn):
+                    return await fn(**kwargs)
+                return await asyncio.to_thread(fn, **kwargs)
             except TypeError:
                 if job.thmf_url:
-                    return fn(str(job.gcode_url), str(job.thmf_url))
-                return fn(str(job.gcode_url))
+                    args = (str(job.gcode_url), str(job.thmf_url))
+                else:
+                    args = (str(job.gcode_url),)
+                if inspect.iscoroutinefunction(fn):
+                    return await fn(*args)
+                return await asyncio.to_thread(fn, *args)
     except Exception as e:  # pragma: no cover - pybambu variations
         raise HTTPException(502, detail=f"start_print failed: {type(e).__name__}: {e}")
 
@@ -247,11 +257,15 @@ async def start_print(name: str, job: JobRequest):
 @app.post("/api/{name}/pause", dependencies=[Depends(require_api_key)])
 async def pause(name: str):
     c = await _connect(name)
-    fn = _pick(c, ("pause_print", "pause"))
+    fn = _pick(c, ("pause_print", "pause")) or _pick(
+        c.get_device(), ("pause_print", "pause")
+    )
     if not fn:
         raise HTTPException(501, "pybambu missing pause API")
     try:
-        return fn()
+        if inspect.iscoroutinefunction(fn):
+            return await fn()
+        return await asyncio.to_thread(fn)
     except Exception as e:  # pragma: no cover
         raise HTTPException(502, detail=f"pause failed: {type(e).__name__}: {e}")
 
@@ -259,11 +273,15 @@ async def pause(name: str):
 @app.post("/api/{name}/resume", dependencies=[Depends(require_api_key)])
 async def resume(name: str):
     c = await _connect(name)
-    fn = _pick(c, ("resume_print", "resume"))
+    fn = _pick(c, ("resume_print", "resume")) or _pick(
+        c.get_device(), ("resume_print", "resume")
+    )
     if not fn:
         raise HTTPException(501, "pybambu missing resume API")
     try:
-        return fn()
+        if inspect.iscoroutinefunction(fn):
+            return await fn()
+        return await asyncio.to_thread(fn)
     except Exception as e:  # pragma: no cover
         raise HTTPException(502, detail=f"resume failed: {type(e).__name__}: {e}")
 
@@ -271,11 +289,15 @@ async def resume(name: str):
 @app.post("/api/{name}/stop", dependencies=[Depends(require_api_key)])
 async def stop(name: str):
     c = await _connect(name)
-    fn = _pick(c, ("stop_print", "stop"))
+    fn = _pick(c, ("stop_print", "stop")) or _pick(
+        c.get_device(), ("stop_print", "stop")
+    )
     if not fn:
         raise HTTPException(501, "pybambu missing stop API")
     try:
-        return fn()
+        if inspect.iscoroutinefunction(fn):
+            return await fn()
+        return await asyncio.to_thread(fn)
     except Exception as e:  # pragma: no cover
         raise HTTPException(502, detail=f"stop failed: {type(e).__name__}: {e}")
 
