@@ -112,7 +112,7 @@ async def _connect(name: str, raise_http: bool = True) -> BambuClient:
                 username=USERNAME,
                 auth_token=AUTH_TOKEN,
             )
-            c.connect(callback=lambda evt: None)
+            await asyncio.to_thread(c.connect, callback=lambda evt: None)
 
             for _ in range(50):
                 if c.connected:
