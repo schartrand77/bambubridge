@@ -41,6 +41,8 @@ log = logging.getLogger("bambubridge")
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     config._validate_env()
+    if not API_KEY:
+        raise RuntimeError("API key not configured")
     if not AUTOCONNECT:
         log.info("startup: lazy mode (BAMBULAB_AUTOCONNECT not set)")
     else:
@@ -98,8 +100,6 @@ api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 
 async def require_api_key(api_key: str = Security(api_key_header)) -> None:
-    if not API_KEY:
-        raise HTTPException(status_code=500, detail="API key not configured")
     if api_key != API_KEY:
         raise HTTPException(status_code=403, detail="Invalid or missing API key")
 
