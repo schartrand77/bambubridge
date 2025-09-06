@@ -1,4 +1,5 @@
 import asyncio
+import time
 import pytest
 from fastapi import HTTPException
 
@@ -34,10 +35,8 @@ async def test_connect_lock(monkeypatch, state_module):
             self.connected = False
 
         def connect(self, callback=None):
-            async def delayed():
-                await asyncio.sleep(0.1)
-                self.connected = True
-            asyncio.create_task(delayed())
+            time.sleep(0.1)
+            self.connected = True
 
     monkeypatch.setattr(state_module, "BambuClient", SlowClient)
 
