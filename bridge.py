@@ -27,6 +27,7 @@ import os
 import asyncio
 import logging
 import inspect
+from contextlib import asynccontextmanager
 from typing import Dict, Any, Optional, Callable, AsyncGenerator, Generator
 
 from pydantic import BaseModel, HttpUrl
@@ -50,6 +51,38 @@ try:
 except Exception as e:
     raise RuntimeError(f"Failed to import pybambu: {e}")
 
+# ---- lifespan ----------------------------------------------------------------
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    if not AUTOCONNECT:
+        log.info("startup: lazy mode (BAMBULAB_AUTOCONNECT not set)")
+    else:
+        log.info("startup: autoconnect enabled")
+        async def warm(n: str) -> None:
+            try:
+                await _connect(n, raise_http=False)
+            except Exception as e:
+                log.warning("warm(%s) error: %s", n, e)
+        await asyncio.gather(*[warm(n) for n in PRINTERS])
+    try:
+        yield
+    finally:
+        clients_snapshot, _ = await state.snapshot()
+        async def _disc(name: str, client: BambuClient) -> None:
+            fn = _pick(client, ("disconnect", "close"))
+            if not fn:
+                return
+            try:
+                if inspect.iscoroutinefunction(fn):
+                    await fn()
+                else:
+                    await asyncio.to_thread(fn)
+                log.info("shutdown: disconnected %s", name)
+            except Exception as e:
+                log.warning("shutdown: disconnect(%s) failed: %s", name, e)
+        await asyncio.gather(*(_disc(n, c) for n, c in clients_snapshot.items()))
+        await state.clear()
+
 # ---- app ---------------------------------------------------------------------
 app = FastAPI(
     title="Bambu LAN Bridge",
@@ -57,6 +90,7 @@ app = FastAPI(
     docs_url=None,                 # we serve Swagger UI locally below
     redoc_url="/redoc",
     openapi_url="/openapi.json",
+    lifespan=lifespan,
 )
 
 DEFAULT_ORIGINS = ["http://localhost", "http://127.0.0.1"]
@@ -262,44 +296,6 @@ async def _connect(name: str, raise_http: bool = True) -> BambuClient:
         if raise_http:
             raise HTTPException(status_code=502, detail=f"connect failed: {detail}")
         raise
-
-# ---- optional autoconnect on startup -----------------------------------------
-@app.on_event("startup")
-async def _startup():
-    if not AUTOCONNECT:
-        log.info("startup: lazy mode (BAMBULAB_AUTOCONNECT not set)")
-        return
-    log.info("startup: autoconnect enabled")
-    async def warm(n: str):
-        try:
-            await _connect(n, raise_http=False)
-        except Exception as e:
-            log.warning("warm(%s) error: %s", n, e)
-    await asyncio.gather(*[warm(n) for n in PRINTERS])
-
-
-# ---- graceful shutdown -------------------------------------------------------
-@app.on_event("shutdown")
-async def _shutdown() -> None:
-    """Disconnect all active printer clients and reset state."""
-    clients_snapshot, _ = await state.snapshot()
-
-    async def _disc(name: str, client: BambuClient) -> None:
-        fn = _pick(client, ("disconnect", "close"))
-        if not fn:
-            return
-        try:
-            if inspect.iscoroutinefunction(fn):
-                await fn()
-            else:
-                await asyncio.to_thread(fn)
-            log.info("shutdown: disconnected %s", name)
-        except Exception as e:
-            log.warning("shutdown: disconnect(%s) failed: %s", name, e)
-
-    await asyncio.gather(*(_disc(n, c) for n, c in clients_snapshot.items()))
-    await state.clear()
-
 
 # ---- request models -----------------------------------------------------------
 
