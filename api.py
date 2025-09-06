@@ -112,6 +112,7 @@ try:
 
     @app.get("/docs", include_in_schema=False)
     def _docs():
+        """Serve Swagger UI HTML for the API."""
         return get_swagger_ui_html(
             openapi_url=app.openapi_url,
             title=f"{app.title} — API",
@@ -122,12 +123,14 @@ try:
 
     @app.get(app.swagger_ui_oauth2_redirect_url, include_in_schema=False)
     def swagger_ui_redirect():
+        """Serve OAuth2 redirect HTML used by Swagger UI."""
         return get_swagger_ui_oauth2_redirect_html()
 except Exception as _e:  # pragma: no cover - optional dependency missing
     log.warning("swagger-ui-bundle not available; /docs may be blank: %s", _e)
 
     @app.get("/docs", include_in_schema=False)
     def fallback_docs():
+        """Serve basic Swagger UI HTML when bundle is unavailable."""
         return get_swagger_ui_html(
             openapi_url=app.openapi_url,
             title=f"{app.title} — API",
@@ -186,11 +189,13 @@ class ActionResult(BaseModel):
 
 @app.get("/healthz")
 async def healthz():
+    """Return API health status and list of known printers."""
     return {"ok": True, "printers": list(PRINTERS.keys())}
 
 
 @app.get("/api/printers")
 async def list_printers():
+    """List configured printers and their connection status."""
     out = []
     clients_snapshot, errors_snapshot = await state.snapshot()
     for n, host in PRINTERS.items():
@@ -209,12 +214,14 @@ async def list_printers():
 
 @app.post("/api/{name}/connect", dependencies=[Depends(require_api_key)])
 async def connect_now(name: str):
+    """Connect to a printer and return its details."""
     c = await _connect(name)
     return {"ok": True, "name": name, "host": c.host, "serial": SERIALS.get(name)}
 
 
 @app.post("/api/{name}/disconnect", dependencies=[Depends(require_api_key)])
 async def disconnect_now(name: str) -> ActionResult:
+    """Disconnect from a printer and confirm the action."""
     _require_known(name)
     c = await state.get_client(name)
     if not c:
@@ -236,6 +243,7 @@ async def disconnect_now(name: str) -> ActionResult:
 
 @app.get("/api/{name}/status")
 async def status(name: str):
+    """Return status information for a printer as JSON."""
     c = await _connect(name)
     dev = c.get_device()
     data: Dict[str, Any] = {
@@ -256,6 +264,7 @@ async def status(name: str):
 
 @app.post("/api/{name}/print", dependencies=[Depends(require_api_key)])
 async def start_print(name: str, job: JobRequest) -> ActionResult:
+    """Start a print job and return the printer's response."""
     c = await _connect(name)
     fn = _pick(c, ("start_print_from_url", "start_print")) or _pick(
         c.get_device(), ("start_print_from_url", "start_print")
@@ -297,25 +306,28 @@ async def start_print(name: str, job: JobRequest) -> ActionResult:
 
 @app.post("/api/{name}/pause", dependencies=[Depends(require_api_key)])
 async def pause(name: str) -> ActionResult:
+    """Pause the active print job and return the result."""
     return await _run_printer_action(name, "pause", ("pause_print", "pause"))
 
 
 @app.post("/api/{name}/resume", dependencies=[Depends(require_api_key)])
 async def resume(name: str) -> ActionResult:
+    """Resume a paused print job and return the result."""
     return await _run_printer_action(name, "resume", ("resume_print", "resume"))
 
 
 @app.post("/api/{name}/stop", dependencies=[Depends(require_api_key)])
 async def stop(name: str) -> ActionResult:
+    """Stop the current print job and return the result."""
     return await _run_printer_action(name, "stop", ("stop_print", "stop"))
 
 
 @app.get("/api/{name}/camera", dependencies=[Depends(require_api_key)])
 async def camera(name: str):
-    """Stream printer camera as MJPEG.
+    """Stream the printer camera as an MJPEG ``StreamingResponse``.
 
-    Supports both sync and async ``camera_mjpeg`` implementations provided by
-    :mod:`pybambu`.
+    Supports both synchronous and asynchronous ``camera_mjpeg`` implementations
+    provided by :mod:`pybambu`.
     """
 
     c = await _connect(name)
