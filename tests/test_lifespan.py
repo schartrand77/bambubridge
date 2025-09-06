@@ -14,6 +14,7 @@ def api_autoconnect(monkeypatch):
     monkeypatch.setenv("BAMBULAB_LAN_KEYS", "p1=LANKEY1")
     monkeypatch.setenv("BAMBULAB_TYPES", "p1=X1C")
     monkeypatch.setenv("BAMBULAB_AUTOCONNECT", "1")
+    monkeypatch.setenv("BAMBULAB_API_KEY", "secret")
     import config
     import state
     import api
