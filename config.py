@@ -17,6 +17,8 @@ def _pairs(env: str) -> Dict[str, str]:
         if "@" in part:
             n, h = part.split("@", 1)
             out[n.strip()] = h.strip()
+        else:
+            log.warning("Invalid printer pair segment '%s'", part)
     return out
 
 
@@ -28,6 +30,8 @@ def _kv(env: str) -> Dict[str, str]:
         if "=" in part:
             k, v = part.split("=", 1)
             out[k.strip()] = v.strip()
+        else:
+            log.warning("Invalid key/value segment '%s'", part)
     return out
 
 
