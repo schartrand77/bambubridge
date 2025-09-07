@@ -124,6 +124,21 @@ async def _connect(
         if c and getattr(c, "connected", False):
             return c
 
+        if c:
+            try:
+                from api import _pick  # local import to avoid circular dependency
+            except Exception:  # pragma: no cover - import errors
+                _pick = lambda *_args: None  # type: ignore
+            fn = _pick(c, ("disconnect", "close")) if _pick else None
+            if fn:
+                try:
+                    if inspect.iscoroutinefunction(fn):
+                        await fn()
+                    else:
+                        await asyncio.to_thread(fn)
+                except Exception as e:  # pragma: no cover - disconnect failures
+                    log.warning("reconnect: disconnect(%s) failed: %s", name, e)
+
         host = PRINTERS[name]
         serial = SERIALS[name]
         access = LAN_KEYS[name]
