@@ -145,10 +145,15 @@ async def _connect(
             )
 
             connect_method = c.connect
+            sig = inspect.signature(connect_method)
+            kwargs = {}
+            if "callback" in sig.parameters:
+                kwargs["callback"] = lambda evt: None
+
             if inspect.iscoroutinefunction(connect_method):
-                await connect_method(callback=lambda evt: None)
+                await connect_method(**kwargs)
             else:
-                await asyncio.to_thread(connect_method, callback=lambda evt: None)
+                await asyncio.to_thread(connect_method, **kwargs)
 
             deadline = time.monotonic() + max_wait
             while not c.connected and time.monotonic() < deadline:
