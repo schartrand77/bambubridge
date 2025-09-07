@@ -9,7 +9,8 @@ from __future__ import annotations
 import logging
 import os
 from threading import Lock
-from typing import Dict
+from types import MappingProxyType
+from typing import Dict, Mapping
 from urllib.parse import urlparse
 
 log = logging.getLogger("bambubridge")
@@ -62,10 +63,15 @@ def _get_float(env: str, default: str) -> float:
             ) from exc
 
 
-PRINTERS: Dict[str, str] = {}
-SERIALS: Dict[str, str] = {}
-LAN_KEYS: Dict[str, str] = {}
-TYPES: Dict[str, str] = {}
+_PRINTERS: Dict[str, str] = {}
+_SERIALS: Dict[str, str] = {}
+_LAN_KEYS: Dict[str, str] = {}
+_TYPES: Dict[str, str] = {}
+
+PRINTERS: Mapping[str, str] = MappingProxyType(_PRINTERS)
+SERIALS: Mapping[str, str] = MappingProxyType(_SERIALS)
+LAN_KEYS: Mapping[str, str] = MappingProxyType(_LAN_KEYS)
+TYPES: Mapping[str, str] = MappingProxyType(_TYPES)
 
 _CONFIG_LOCK = Lock()
 
@@ -132,14 +138,14 @@ def _validate_env() -> None:
         raise RuntimeError(f"Printer configuration invalid: {exc}") from exc
 
     with _CONFIG_LOCK:
-        PRINTERS.clear()
-        PRINTERS.update(printers)
-        SERIALS.clear()
-        SERIALS.update(serials)
-        LAN_KEYS.clear()
-        LAN_KEYS.update(lan_keys)
-        TYPES.clear()
-        TYPES.update(types)
+        _PRINTERS.clear()
+        _PRINTERS.update(printers)
+        _SERIALS.clear()
+        _SERIALS.update(serials)
+        _LAN_KEYS.clear()
+        _LAN_KEYS.update(lan_keys)
+        _TYPES.clear()
+        _TYPES.update(types)
         API_KEY = os.getenv("BAMBULAB_API_KEY")
         ALLOW_ORIGINS = _load_allow_origins()
 
@@ -161,3 +167,13 @@ def _validate_env() -> None:
             f"Missing {env} for {name}" for name, env in missing_required
         )
         raise RuntimeError(f"Printer configuration incomplete: {details}")
+
+
+def _mutable_copy(mapping: Mapping[str, str]) -> Dict[str, str]:
+    """Return a mutable copy of a configuration mapping.
+
+    Tests can use this to obtain a dict that may be modified without affecting
+    the global read-only configuration views.
+    """
+
+    return dict(mapping)

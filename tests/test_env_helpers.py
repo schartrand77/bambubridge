@@ -1,4 +1,6 @@
 import logging
+from types import MappingProxyType
+
 import pytest
 
 
@@ -119,3 +121,20 @@ def test_validate_env_rereads_api_key_and_origins(monkeypatch, cfg):
     cfg._validate_env()
     assert cfg.API_KEY == "second"
     assert cfg.ALLOW_ORIGINS == ["http://two.com"]
+
+
+def test_config_readonly_and_copy(monkeypatch, cfg):
+    monkeypatch.setenv("BAMBULAB_PRINTERS", "p1@h")
+    monkeypatch.setenv("BAMBULAB_SERIALS", "p1=s")
+    monkeypatch.setenv("BAMBULAB_LAN_KEYS", "p1=k")
+    monkeypatch.setenv("BAMBULAB_TYPES", "p1=X1C")
+    cfg._validate_env()
+
+    assert isinstance(cfg.PRINTERS, MappingProxyType)
+
+    with pytest.raises(TypeError):
+        cfg.PRINTERS["p2"] = "h2"  # type: ignore[index]
+
+    mutable = cfg._mutable_copy(cfg.PRINTERS)
+    mutable["p2"] = "h2"
+    assert "p2" not in cfg.PRINTERS
