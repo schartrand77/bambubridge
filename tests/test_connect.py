@@ -90,3 +90,33 @@ async def test_connect_timeout_configurable(monkeypatch, state_module):
         await state_module._connect(
             "p1", raise_http=False, wait_interval=0.01, max_wait=0.02
         )
+
+
+@pytest.mark.asyncio
+async def test_connect_closes_old_client(monkeypatch, state_module):
+    await state_module.state.clear()
+
+    class OldClient:
+        def __init__(self):
+            self.connected = False
+            self.closed = False
+
+        def close(self):
+            self.closed = True
+
+    class NewClient:
+        def __init__(self, *args, **kwargs):
+            self.host = kwargs["host"]
+            self.connected = False
+
+        def connect(self, callback=None):
+            self.connected = True
+
+    old = OldClient()
+    await state_module.state.set_client("p1", old)
+    monkeypatch.setattr(state_module, "BambuClient", NewClient)
+
+    new = await state_module._connect("p1")
+    assert old.closed is True
+    assert new is not old
+    assert await state_module.state.get_client("p1") is new
