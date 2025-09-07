@@ -41,3 +41,14 @@ async def test_invoke_print_no_match(api_module):
 
     with pytest.raises(TypeError):
         await api_module._invoke_print(impl, "http://g", None)
+
+
+@pytest.mark.asyncio
+async def test_invoke_print_propagates_inner_type_error(api_module):
+    """``TypeError`` raised inside ``fn`` is not swallowed."""
+
+    def impl(*, url, thmf_url=None):
+        raise TypeError("boom")
+
+    with pytest.raises(TypeError, match="boom"):
+        await api_module._invoke_print(impl, "http://g", None)
