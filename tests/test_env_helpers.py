@@ -28,18 +28,18 @@ def test_kv_warn(monkeypatch, cfg, caplog):
     assert "oops" in caplog.text
 
 
-def test_pairs_duplicate_warn(monkeypatch, cfg, caplog):
+def test_pairs_duplicate_error(monkeypatch, cfg):
     monkeypatch.setenv("TEST_DUP_PAIRS", "a@1;a@2")
-    with caplog.at_level(logging.WARNING):
-        assert cfg._pairs("TEST_DUP_PAIRS") == {"a": "2"}
-    assert "Duplicate TEST_DUP_PAIRS entry for 'a'" in caplog.text
+    with pytest.raises(ValueError) as exc:
+        cfg._pairs("TEST_DUP_PAIRS")
+    assert "Duplicate TEST_DUP_PAIRS entry for 'a'" in str(exc.value)
 
 
-def test_kv_duplicate_warn(monkeypatch, cfg, caplog):
+def test_kv_duplicate_error(monkeypatch, cfg):
     monkeypatch.setenv("TEST_DUP_KV", "a=1;a=2")
-    with caplog.at_level(logging.WARNING):
-        assert cfg._kv("TEST_DUP_KV") == {"a": "2"}
-    assert "Duplicate TEST_DUP_KV entry for 'a'" in caplog.text
+    with pytest.raises(ValueError) as exc:
+        cfg._kv("TEST_DUP_KV")
+    assert "Duplicate TEST_DUP_KV entry for 'a'" in str(exc.value)
 
 
 def test_get_float(monkeypatch, cfg):
@@ -62,21 +62,33 @@ def test_get_float_default_invalid(monkeypatch, cfg):
 
 
 def test_validate_env_missing(cfg, monkeypatch):
-    monkeypatch.setattr(cfg, "PRINTERS", {"p1": "h"})
-    monkeypatch.setattr(cfg, "SERIALS", {})
-    monkeypatch.setattr(cfg, "LAN_KEYS", {"p1": "k"})
+    monkeypatch.setenv("BAMBULAB_PRINTERS", "p1@h")
+    monkeypatch.setenv("BAMBULAB_SERIALS", "")
+    monkeypatch.setenv("BAMBULAB_LAN_KEYS", "p1=k")
+    monkeypatch.setenv("BAMBULAB_TYPES", "p1=X1C")
     with pytest.raises(RuntimeError) as exc:
         cfg._validate_env()
     assert "Missing BAMBULAB_SERIALS for p1" in str(exc.value)
 
 
 def test_validate_env_multiple_missing(cfg, monkeypatch):
-    monkeypatch.setattr(cfg, "PRINTERS", {"p1": "h"})
-    monkeypatch.setattr(cfg, "SERIALS", {"p2": "s"})
-    monkeypatch.setattr(cfg, "LAN_KEYS", {"p1": "k"})
+    monkeypatch.setenv("BAMBULAB_PRINTERS", "p1@h")
+    monkeypatch.setenv("BAMBULAB_SERIALS", "p2=s")
+    monkeypatch.setenv("BAMBULAB_LAN_KEYS", "p1=k")
+    monkeypatch.setenv("BAMBULAB_TYPES", "")
     with pytest.raises(RuntimeError) as exc:
         cfg._validate_env()
     msg = str(exc.value)
     assert "Missing BAMBULAB_SERIALS for p1" in msg
     assert "Missing BAMBULAB_PRINTERS for p2" in msg
     assert "Missing BAMBULAB_LAN_KEYS for p2" in msg
+
+
+def test_validate_env_duplicate(cfg, monkeypatch):
+    monkeypatch.setenv("BAMBULAB_PRINTERS", "a@1;a@2")
+    monkeypatch.setenv("BAMBULAB_SERIALS", "a=s")
+    monkeypatch.setenv("BAMBULAB_LAN_KEYS", "a=k")
+    monkeypatch.setenv("BAMBULAB_TYPES", "a=X1C")
+    with pytest.raises(RuntimeError) as exc:
+        cfg._validate_env()
+    assert "Duplicate BAMBULAB_PRINTERS entry for 'a'" in str(exc.value)
