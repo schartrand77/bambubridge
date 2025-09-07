@@ -55,4 +55,14 @@ def test_camera_stream_unsupported(client, monkeypatch):
 
     headers = {"X-API-Key": "secret"}
     res = client.get("/api/p1/camera", headers=headers)
+    assert res.status_code in (501, 502)
+
+
+def test_camera_stream_missing(client, monkeypatch):
+    from state import BambuClient
+
+    monkeypatch.delattr(BambuClient, "camera_mjpeg", raising=False)
+
+    headers = {"X-API-Key": "secret"}
+    res = client.get("/api/p1/camera", headers=headers)
     assert res.status_code == 501
