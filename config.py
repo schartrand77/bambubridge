@@ -50,17 +50,21 @@ def _kv(env: str) -> Dict[str, str]:
 
 def _get_float(env: str, default: str) -> float:
     """Return a float from ``env`` or ``default`` with error handling."""
-    raw = os.getenv(env, default)
+    try:
+        default_val: float = float(default)
+    except ValueError as exc:
+        raise RuntimeError(
+            f"Invalid default for {env}: {default}"
+        ) from exc
+
+    raw = os.getenv(env)
+    if raw is None:
+        return default_val
     try:
         return float(raw)
     except ValueError:
         log.error("Invalid %s value %r; using default %s", env, raw, default)
-        try:
-            return float(default)
-        except ValueError as exc:
-            raise RuntimeError(
-                f"Invalid default for {env}: {default}"
-            ) from exc
+        return default_val
 
 
 _PRINTERS: Dict[str, str] = {}
