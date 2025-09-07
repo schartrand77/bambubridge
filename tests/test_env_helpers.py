@@ -92,3 +92,19 @@ def test_validate_env_duplicate(cfg, monkeypatch):
     with pytest.raises(RuntimeError) as exc:
         cfg._validate_env()
     assert "Duplicate BAMBULAB_PRINTERS entry for 'a'" in str(exc.value)
+
+
+def test_allow_origins_validation(monkeypatch, caplog):
+    monkeypatch.setenv(
+        "BAMBULAB_ALLOW_ORIGINS",
+        "http://good.com,not-a-url,https://ok.org,ftp://bad.com",
+    )
+    import importlib
+    import config
+
+    with caplog.at_level(logging.WARNING):
+        importlib.reload(config)
+
+    assert config.ALLOW_ORIGINS == ["http://good.com", "https://ok.org"]
+    assert "Ignoring invalid origin 'not-a-url'" in caplog.text
+    assert "Ignoring invalid origin 'ftp://bad.com'" in caplog.text
