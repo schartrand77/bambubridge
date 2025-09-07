@@ -164,7 +164,7 @@ async def _connect(
             log.info("connected: %s@%s (%s)", name, host, serial)
             return c
 
-        except Exception as e:  # pragma: no cover - network failures
+        except (OSError, RuntimeError, asyncio.TimeoutError) as e:  # pragma: no cover - network failures
             detail = f"{type(e).__name__}: {e}"
             await state.set_error(name, detail)
             log.warning("connect(%s) failed: %s", name, detail)
