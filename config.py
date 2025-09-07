@@ -1,9 +1,14 @@
-"""Environment configuration for bambubridge."""
+"""Environment configuration for bambubridge.
+
+Callers must not access configuration globals while revalidation is in
+progress.
+"""
 
 from __future__ import annotations
 
 import os
 import logging
+from threading import Lock
 from typing import Dict
 
 log = logging.getLogger("bambubridge")
@@ -61,6 +66,8 @@ SERIALS: Dict[str, str] = {}
 LAN_KEYS: Dict[str, str] = {}
 TYPES: Dict[str, str] = {}
 
+_CONFIG_LOCK = Lock()
+
 REGION = os.getenv("BAMBULAB_REGION", "US")
 EMAIL = os.getenv("BAMBULAB_EMAIL", "")
 USERNAME = os.getenv("BAMBULAB_USERNAME", "")
@@ -84,7 +91,11 @@ API_KEY = os.getenv("BAMBULAB_API_KEY")
 
 
 def _validate_env() -> None:
-    """Cross-check name sets and ensure required fields exist."""
+    """Cross-check name sets and ensure required fields exist.
+
+    Callers must not access configuration globals while revalidation is in
+    progress.
+    """
     try:
         printers = _pairs("BAMBULAB_PRINTERS")
         serials = _kv("BAMBULAB_SERIALS")
@@ -93,14 +104,15 @@ def _validate_env() -> None:
     except ValueError as exc:
         raise RuntimeError(f"Printer configuration invalid: {exc}") from exc
 
-    PRINTERS.clear()
-    PRINTERS.update(printers)
-    SERIALS.clear()
-    SERIALS.update(serials)
-    LAN_KEYS.clear()
-    LAN_KEYS.update(lan_keys)
-    TYPES.clear()
-    TYPES.update(types)
+    with _CONFIG_LOCK:
+        PRINTERS.clear()
+        PRINTERS.update(printers)
+        SERIALS.clear()
+        SERIALS.update(serials)
+        LAN_KEYS.clear()
+        LAN_KEYS.update(lan_keys)
+        TYPES.clear()
+        TYPES.update(types)
 
     names = set(PRINTERS) | set(SERIALS) | set(LAN_KEYS) | set(TYPES)
     missing_required: list[tuple[str, str]] = []
