@@ -75,6 +75,22 @@ async def test_connect_coroutine(monkeypatch, state_module):
 
 
 @pytest.mark.asyncio
+async def test_connect_without_callback(monkeypatch, state_module):
+    class NoCallbackClient:
+        def __init__(self, *args, **kwargs):
+            self.host = kwargs["host"]
+            self.connected = False
+
+        def connect(self):
+            self.connected = True
+
+    monkeypatch.setattr(state_module, "BambuClient", NoCallbackClient)
+
+    c = await state_module._connect("p1")
+    assert c.connected is True
+
+
+@pytest.mark.asyncio
 async def test_connect_timeout_configurable(monkeypatch, state_module):
     class NeverClient:
         def __init__(self, *args, **kwargs):
