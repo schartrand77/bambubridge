@@ -19,7 +19,7 @@ def _pairs(env: str) -> Dict[str, str]:
             n, h = part.split("@", 1)
             key = n.strip()
             if key in seen:
-                log.warning("Duplicate %s entry for '%s'", env, key)
+                raise ValueError(f"Duplicate {env} entry for '{key}'")
             seen.add(key)
             out[key] = h.strip()
         else:
@@ -37,7 +37,7 @@ def _kv(env: str) -> Dict[str, str]:
             k, v = part.split("=", 1)
             key = k.strip()
             if key in seen:
-                log.warning("Duplicate %s entry for '%s'", env, key)
+                raise ValueError(f"Duplicate {env} entry for '{key}'")
             seen.add(key)
             out[key] = v.strip()
         else:
@@ -60,10 +60,10 @@ def _get_float(env: str, default: str) -> float:
             ) from exc
 
 
-PRINTERS = _pairs("BAMBULAB_PRINTERS")
-SERIALS = _kv("BAMBULAB_SERIALS")
-LAN_KEYS = _kv("BAMBULAB_LAN_KEYS")
-TYPES = _kv("BAMBULAB_TYPES")
+PRINTERS: Dict[str, str] = {}
+SERIALS: Dict[str, str] = {}
+LAN_KEYS: Dict[str, str] = {}
+TYPES: Dict[str, str] = {}
 
 REGION = os.getenv("BAMBULAB_REGION", "US")
 EMAIL = os.getenv("BAMBULAB_EMAIL", "")
@@ -89,6 +89,23 @@ API_KEY = os.getenv("BAMBULAB_API_KEY")
 
 def _validate_env() -> None:
     """Cross-check name sets and ensure required fields exist."""
+    try:
+        printers = _pairs("BAMBULAB_PRINTERS")
+        serials = _kv("BAMBULAB_SERIALS")
+        lan_keys = _kv("BAMBULAB_LAN_KEYS")
+        types = _kv("BAMBULAB_TYPES")
+    except ValueError as exc:
+        raise RuntimeError(f"Printer configuration invalid: {exc}") from exc
+
+    PRINTERS.clear()
+    PRINTERS.update(printers)
+    SERIALS.clear()
+    SERIALS.update(serials)
+    LAN_KEYS.clear()
+    LAN_KEYS.update(lan_keys)
+    TYPES.clear()
+    TYPES.update(types)
+
     names = set(PRINTERS) | set(SERIALS) | set(LAN_KEYS) | set(TYPES)
     missing_required: list[tuple[str, str]] = []
     for n in names:
