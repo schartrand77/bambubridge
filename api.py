@@ -29,8 +29,6 @@ import config
 from config import (
     PRINTERS,
     SERIALS,
-    ALLOW_ORIGINS,
-    API_KEY,
     AUTOCONNECT,
 )
 from state import state, _connect, _require_known, BambuClient
@@ -43,7 +41,7 @@ log = logging.getLogger("bambubridge")
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     config._validate_env()
-    if not API_KEY:
+    if not config.API_KEY:
         raise RuntimeError("API key not configured")
     if not AUTOCONNECT:
         log.info("startup: lazy mode (BAMBULAB_AUTOCONNECT not set)")
@@ -92,7 +90,7 @@ app = FastAPI(
 # CORS configuration (defaults to localhost only; override via BAMBULAB_ALLOW_ORIGINS)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOW_ORIGINS,
+    allow_origins=config.ALLOW_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -102,12 +100,12 @@ api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 
 async def require_api_key(api_key: str = Security(api_key_header)) -> None:
-    if API_KEY is None:
+    if config.API_KEY is None:
         raise HTTPException(
             status_code=500,
             detail="API key not configured",
         )
-    if not api_key or not secrets.compare_digest(api_key, API_KEY):
+    if not api_key or not secrets.compare_digest(api_key, config.API_KEY):
         raise HTTPException(
             status_code=401,
             detail="Invalid or missing API key",
