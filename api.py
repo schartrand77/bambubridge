@@ -182,40 +182,41 @@ async def _invoke_print(
 ) -> Any:
     """Invoke a print function with normalized signatures.
 
-    Tries known keyword argument combinations and finally positional arguments,
-    mirroring the variations found across ``pybambu`` versions.
+    ``pybambu`` has exposed a few different call signatures for starting a
+    print.  Rather than attempting multiple calls, inspect ``fn`` to determine
+    how to pass the ``gcode_url`` and optional ``thmf_url`` parameters.
     """
 
-    combos = []
-    kw1 = {"gcode_url": gcode_url}
-    if thmf_url:
-        kw1["thmf_url"] = thmf_url
-    combos.append({"kwargs": kw1})
+    sig = inspect.signature(fn)
+    param_names = [p.name for p in sig.parameters.values()]
 
-    kw2 = {"url": gcode_url}
-    if thmf_url:
-        kw2["thmf_url"] = thmf_url
-    combos.append({"kwargs": kw2})
+    args: list[Any] = []
+    kwargs: dict[str, Any] = {}
 
-    args = (gcode_url, thmf_url) if thmf_url else (gcode_url,)
-    combos.append({"args": args})
+    if "gcode_url" in param_names:
+        kwargs["gcode_url"] = gcode_url
+    elif "url" in param_names:
+        kwargs["url"] = gcode_url
+    else:
+        args.append(gcode_url)
+
+    if thmf_url is not None:
+        if "thmf_url" in param_names:
+            kwargs["thmf_url"] = thmf_url
+        else:
+            args.append(thmf_url)
 
     is_coro = inspect.iscoroutinefunction(fn)
-    last_exc: Optional[TypeError] = None
-    for combo in combos:
-        try:
-            if "kwargs" in combo:
-                if is_coro:
-                    return await fn(**combo["kwargs"])
-                return await asyncio.to_thread(fn, **combo["kwargs"])
-            else:
-                if is_coro:
-                    return await fn(*combo["args"])
-                return await asyncio.to_thread(fn, *combo["args"])
-        except TypeError as e:
-            last_exc = e
-    if last_exc:
-        raise last_exc
+    try:
+        if is_coro:
+            return await fn(*args, **kwargs)
+        return await asyncio.to_thread(fn, *args, **kwargs)
+    except TypeError as e:
+        tb = e.__traceback__
+        if tb and tb.tb_next:
+            # Exception originated inside ``fn``; propagate.
+            raise
+        raise
 
 
 
