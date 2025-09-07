@@ -54,6 +54,8 @@ implementation automatically.
 
 ## Development
 
+This project supports Python 3.12 or newer. Ensure your local environment uses at least Python 3.12.
+
 Install the development dependencies to run the test suite:
 
 ```bash
