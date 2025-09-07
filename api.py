@@ -222,6 +222,16 @@ class JobRequest(BaseModel):
     thmf_url: Optional[HttpUrl] = None
 
 
+class PrinterInfo(BaseModel):
+    """Details about a configured printer."""
+
+    name: str
+    host: str
+    serial: Optional[str] = None
+    connected: bool
+    last_error: Optional[str] = None
+
+
 class StatusResult(BaseModel):
     """Standard response wrapper for status information."""
 
@@ -246,20 +256,20 @@ async def healthz() -> StatusResult:
 
 
 @app.get("/api/printers")
-async def list_printers():
+async def list_printers() -> list[PrinterInfo]:
     """List configured printers and their connection status."""
-    out = []
+    out: list[PrinterInfo] = []
     clients_snapshot, errors_snapshot = await state.snapshot()
     for n, host in PRINTERS.items():
         c = clients_snapshot.get(n)
         out.append(
-            {
-                "name": n,
-                "host": host,
-                "serial": SERIALS.get(n),
-                "connected": bool(c and getattr(c, "connected", False)),
-                "last_error": errors_snapshot.get(n),
-            }
+            PrinterInfo(
+                name=n,
+                host=host,
+                serial=SERIALS.get(n),
+                connected=bool(c and getattr(c, "connected", False)),
+                last_error=errors_snapshot.get(n),
+            )
         )
     return out
 

@@ -6,8 +6,12 @@ def test_health_and_printers(client):
     res = client.get("/api/printers")
     assert res.status_code == 200
     data = res.json()
-    assert data[0]["name"] == "p1"
-    assert data[0]["connected"] is False
+    printer = data[0]
+    assert printer["name"] == "p1"
+    assert printer["host"] == "127.0.0.1"
+    assert printer["serial"] == "SERIAL1"
+    assert printer["connected"] is False
+    assert printer["last_error"] is None
 
 
 def test_connect_status_and_actions(client):
@@ -61,7 +65,11 @@ def test_disconnect(client):
     assert data["result"]["name"] == "p1"
 
     data = client.get("/api/printers").json()
-    assert data[0]["connected"] is False
+    printer = data[0]
+    assert printer["connected"] is False
+    assert printer["host"] == "127.0.0.1"
+    assert printer["serial"] == "SERIAL1"
+    assert printer["last_error"] is None
 
     res = client.post("/api/p1/disconnect", headers=headers)
     assert res.status_code == 404
