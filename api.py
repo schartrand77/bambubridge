@@ -367,15 +367,13 @@ async def camera(name: str):
 
     c = await _connect(name)
     gen = getattr(c, "camera_mjpeg", None)
-    if not callable(gen):
+    if gen is None:
         raise HTTPException(501, "Camera MJPEG not available in this pybambu build")
 
     try:
-        candidate = gen
-        if callable(gen):
-            candidate = gen()
-            if inspect.isawaitable(candidate):
-                candidate = await candidate
+        candidate = gen() if callable(gen) else gen
+        if inspect.isawaitable(candidate):
+            candidate = await candidate
 
         if inspect.isasyncgen(candidate):
             async def astream() -> AsyncGenerator[bytes, None]:
