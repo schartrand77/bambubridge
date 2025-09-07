@@ -34,6 +34,7 @@ from config import (
     AUTOCONNECT,
 )
 from state import state, _connect, _require_known, BambuClient
+from utils import _pick
 
 log = logging.getLogger("bambubridge")
 
@@ -148,13 +149,6 @@ except Exception as _e:  # pragma: no cover - optional dependency missing
 
 
 # ---- helpers -----------------------------------------------------------------
-
-def _pick(obj: Any, names: tuple[str, ...]) -> Optional[Callable]:
-    for n in names:
-        fn = getattr(obj, n, None)
-        if callable(fn):
-            return fn
-    return None
 
 
 async def _run_printer_action(

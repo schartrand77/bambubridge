@@ -25,6 +25,7 @@ from config import (
     CONNECT_INTERVAL,
     CONNECT_TIMEOUT,
 )
+from utils import _pick
 
 log = logging.getLogger("bambubridge")
 
@@ -115,11 +116,7 @@ async def _connect(
             return c
 
         if c:
-            try:
-                from api import _pick  # local import to avoid circular dependency
-            except Exception:  # pragma: no cover - import errors
-                _pick = lambda *_args: None  # type: ignore
-            fn = _pick(c, ("disconnect", "close")) if _pick else None
+            fn = _pick(c, ("disconnect", "close"))
             if fn:
                 try:
                     if inspect.iscoroutinefunction(fn):
