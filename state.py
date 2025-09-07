@@ -9,6 +9,8 @@ import time
 from contextlib import asynccontextmanager
 from typing import Dict, Optional
 
+import aiorwlock
+
 from fastapi import HTTPException
 
 from config import (
@@ -38,26 +40,14 @@ class PrinterState:
     def __init__(self) -> None:
         self.clients: Dict[str, BambuClient] = {}
         self.last_error: Dict[str, str] = {}
-        # Write operations use a plain asyncio.Lock while reads serialize
-        # access to the reader count with another asyncio.Lock.
-        self.write_lock = asyncio.Lock()
-        self._read_lock = asyncio.Lock()
-        self._readers = 0
+        self.rw_lock = aiorwlock.RWLock()
+        self.write_lock = self.rw_lock.writer_lock
         self.connect_locks: Dict[str, asyncio.Lock] = {}
 
     @asynccontextmanager
     async def read_lock(self):
-        async with self._read_lock:
-            self._readers += 1
-            if self._readers == 1:
-                await self.write_lock.acquire()
-        try:
+        async with self.rw_lock.reader_lock:
             yield
-        finally:
-            async with self._read_lock:
-                self._readers -= 1
-                if self._readers == 0:
-                    self.write_lock.release()
 
     async def get_client(self, name: str) -> Optional[BambuClient]:
         async with self.read_lock():
