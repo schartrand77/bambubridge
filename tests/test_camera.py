@@ -45,6 +45,49 @@ def test_camera_stream(client, monkeypatch, impl):
     assert b"".join(data) == b"".join(chunks)
 
 
+@pytest.mark.parametrize("impl", ["sync", "async"])
+def test_camera_stream_closes(client, monkeypatch, impl):
+    """Ensure camera generators are properly closed when streaming ends."""
+    from state import BambuClient
+
+    closed = False
+    chunks = [b"c1", b"c2"]
+
+    if impl == "async":
+        async def fake_camera_mjpeg(self):
+            async def gen():
+                nonlocal closed
+                try:
+                    for c in chunks:
+                        yield c
+                finally:
+                    closed = True
+
+            return gen()
+
+        monkeypatch.setattr(BambuClient, "camera_mjpeg", fake_camera_mjpeg)
+    else:
+        def fake_camera_mjpeg(self):
+            def gen():
+                nonlocal closed
+                try:
+                    for c in chunks:
+                        yield c
+                finally:
+                    closed = True
+
+            return gen()
+
+        monkeypatch.setattr(BambuClient, "camera_mjpeg", fake_camera_mjpeg)
+
+    headers = {"X-API-Key": "secret"}
+    with client.stream("GET", "/api/p1/camera", headers=headers) as res:
+        assert res.status_code == 200
+        it = res.iter_bytes()
+        next(it)
+    assert closed
+
+
 def test_camera_stream_unsupported(client, monkeypatch):
     from state import BambuClient
 
