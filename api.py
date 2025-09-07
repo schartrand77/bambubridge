@@ -101,6 +101,11 @@ api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 
 async def require_api_key(api_key: str = Security(api_key_header)) -> None:
+    if API_KEY is None:
+        raise HTTPException(
+            status_code=500,
+            detail="API key not configured",
+        )
     if not api_key or not secrets.compare_digest(api_key, API_KEY):
         raise HTTPException(
             status_code=401,
