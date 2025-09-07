@@ -6,10 +6,11 @@ progress.
 
 from __future__ import annotations
 
-import os
 import logging
+import os
 from threading import Lock
 from typing import Dict
+from urllib.parse import urlparse
 
 log = logging.getLogger("bambubridge")
 
@@ -83,9 +84,18 @@ CONNECT_INTERVAL = _get_float("BAMBULAB_CONNECT_INTERVAL", "0.1")
 CONNECT_TIMEOUT = _get_float("BAMBULAB_CONNECT_TIMEOUT", "5")
 
 DEFAULT_ORIGINS = ["http://localhost", "http://127.0.0.1"]
-ALLOW_ORIGINS = [
+ALLOW_ORIGINS_RAW = [
     o.strip() for o in os.getenv("BAMBULAB_ALLOW_ORIGINS", "").split(",") if o.strip()
-] or DEFAULT_ORIGINS
+]
+ALLOW_ORIGINS = []
+for origin in ALLOW_ORIGINS_RAW:
+    parsed = urlparse(origin)
+    if parsed.scheme in {"http", "https"} and parsed.netloc and not parsed.params and not parsed.query and not parsed.fragment:
+        ALLOW_ORIGINS.append(origin)
+    else:
+        log.warning("Ignoring invalid origin '%s'", origin)
+if not ALLOW_ORIGINS:
+    ALLOW_ORIGINS = DEFAULT_ORIGINS
 
 API_KEY = os.getenv("BAMBULAB_API_KEY")
 
