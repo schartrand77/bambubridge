@@ -39,7 +39,10 @@ async def test_invoke_print_no_match(api_module):
     def impl(a, b):
         return {}
 
-    with pytest.raises(TypeError):
+    with pytest.raises(
+        TypeError,
+        match="Expected to accept 'gcode_url' or 'url' and optional 'thmf_url'",
+    ):
         await api_module._invoke_print(impl, "http://g", None)
 
 

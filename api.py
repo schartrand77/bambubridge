@@ -205,10 +205,15 @@ async def _invoke_print(
         return await asyncio.to_thread(fn, *args, **kwargs)
     except TypeError as e:
         tb = e.__traceback__
-        if tb and tb.tb_next:
-            # Exception originated inside ``fn``; propagate.
-            raise
-        raise
+        fn_code = getattr(fn, "__code__", None)
+        while tb:
+            if tb.tb_frame.f_code is fn_code:
+                # Exception originated inside ``fn``; propagate.
+                raise
+            tb = tb.tb_next
+        raise TypeError(
+            "Unsupported function signature. Expected to accept 'gcode_url' or 'url' and optional 'thmf_url'."
+        ) from None
 
 
 
