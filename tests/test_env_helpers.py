@@ -94,17 +94,28 @@ def test_validate_env_duplicate(cfg, monkeypatch):
     assert "Duplicate BAMBULAB_PRINTERS entry for 'a'" in str(exc.value)
 
 
-def test_allow_origins_validation(monkeypatch, caplog):
+def test_allow_origins_validation(monkeypatch, caplog, cfg):
     monkeypatch.setenv(
         "BAMBULAB_ALLOW_ORIGINS",
         "http://good.com,not-a-url,https://ok.org,ftp://bad.com",
     )
-    import importlib
-    import config
-
     with caplog.at_level(logging.WARNING):
-        importlib.reload(config)
+        cfg._validate_env()
 
-    assert config.ALLOW_ORIGINS == ["http://good.com", "https://ok.org"]
+    assert cfg.ALLOW_ORIGINS == ["http://good.com", "https://ok.org"]
     assert "Ignoring invalid origin 'not-a-url'" in caplog.text
     assert "Ignoring invalid origin 'ftp://bad.com'" in caplog.text
+
+
+def test_validate_env_rereads_api_key_and_origins(monkeypatch, cfg):
+    monkeypatch.setenv("BAMBULAB_API_KEY", "first")
+    monkeypatch.setenv("BAMBULAB_ALLOW_ORIGINS", "http://one.com")
+    cfg._validate_env()
+    assert cfg.API_KEY == "first"
+    assert cfg.ALLOW_ORIGINS == ["http://one.com"]
+
+    monkeypatch.setenv("BAMBULAB_API_KEY", "second")
+    monkeypatch.setenv("BAMBULAB_ALLOW_ORIGINS", "http://two.com")
+    cfg._validate_env()
+    assert cfg.API_KEY == "second"
+    assert cfg.ALLOW_ORIGINS == ["http://two.com"]

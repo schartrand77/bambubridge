@@ -84,19 +84,33 @@ CONNECT_INTERVAL = _get_float("BAMBULAB_CONNECT_INTERVAL", "0.1")
 CONNECT_TIMEOUT = _get_float("BAMBULAB_CONNECT_TIMEOUT", "5")
 
 DEFAULT_ORIGINS = ["http://localhost", "http://127.0.0.1"]
-ALLOW_ORIGINS_RAW = [
-    o.strip() for o in os.getenv("BAMBULAB_ALLOW_ORIGINS", "").split(",") if o.strip()
-]
-ALLOW_ORIGINS = []
-for origin in ALLOW_ORIGINS_RAW:
-    parsed = urlparse(origin)
-    if parsed.scheme in {"http", "https"} and parsed.netloc and not parsed.params and not parsed.query and not parsed.fragment:
-        ALLOW_ORIGINS.append(origin)
-    else:
-        log.warning("Ignoring invalid origin '%s'", origin)
-if not ALLOW_ORIGINS:
-    ALLOW_ORIGINS = DEFAULT_ORIGINS
 
+
+def _load_allow_origins() -> list[str]:
+    """Return a validated list of CORS origins from ``BAMBULAB_ALLOW_ORIGINS``."""
+
+    raw = [
+        o.strip()
+        for o in os.getenv("BAMBULAB_ALLOW_ORIGINS", "").split(",")
+        if o.strip()
+    ]
+    origins: list[str] = []
+    for origin in raw:
+        parsed = urlparse(origin)
+        if (
+            parsed.scheme in {"http", "https"}
+            and parsed.netloc
+            and not parsed.params
+            and not parsed.query
+            and not parsed.fragment
+        ):
+            origins.append(origin)
+        else:
+            log.warning("Ignoring invalid origin '%s'", origin)
+    return origins or list(DEFAULT_ORIGINS)
+
+
+ALLOW_ORIGINS = _load_allow_origins()
 API_KEY = os.getenv("BAMBULAB_API_KEY")
 
 
@@ -106,6 +120,9 @@ def _validate_env() -> None:
     Callers must not access configuration globals while revalidation is in
     progress.
     """
+
+    global API_KEY, ALLOW_ORIGINS
+
     try:
         printers = _pairs("BAMBULAB_PRINTERS")
         serials = _kv("BAMBULAB_SERIALS")
@@ -123,6 +140,8 @@ def _validate_env() -> None:
         LAN_KEYS.update(lan_keys)
         TYPES.clear()
         TYPES.update(types)
+        API_KEY = os.getenv("BAMBULAB_API_KEY")
+        ALLOW_ORIGINS = _load_allow_origins()
 
     names = set(PRINTERS) | set(SERIALS) | set(LAN_KEYS) | set(TYPES)
     missing_required: list[tuple[str, str]] = []
