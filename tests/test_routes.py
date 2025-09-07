@@ -47,7 +47,7 @@ def test_connect_status_and_actions(client):
 
 def test_protected_route_requires_key(client):
     res = client.post("/api/p1/connect")
-    assert res.status_code == 403
+    assert res.status_code == 401
 
 
 def test_disconnect(client):

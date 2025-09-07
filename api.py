@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import inspect
+import secrets
 from contextlib import asynccontextmanager
 from typing import Dict, Any, Optional, Callable, AsyncGenerator, Generator
 
@@ -100,8 +101,12 @@ api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 
 async def require_api_key(api_key: str = Security(api_key_header)) -> None:
-    if api_key != API_KEY:
-        raise HTTPException(status_code=403, detail="Invalid or missing API key")
+    if not api_key or not secrets.compare_digest(api_key, API_KEY):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or missing API key",
+            headers={"WWW-Authenticate": "API-Key"},
+        )
 
 
 # ---- Swagger UI assets served locally (no external CDN needed) ---------------
