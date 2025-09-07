@@ -6,7 +6,7 @@ import asyncio
 import logging
 import inspect
 import secrets
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, closing, aclosing
 from typing import Dict, Any, Optional, Callable, AsyncGenerator, Generator
 
 from fastapi import FastAPI, HTTPException, Depends, Security
@@ -383,8 +383,10 @@ async def camera(name: str):
 
         if inspect.isasyncgen(candidate):
             async def astream() -> AsyncGenerator[bytes, None]:
-                async for chunk in candidate:
-                    yield chunk
+                async with aclosing(candidate):
+                    async for chunk in candidate:
+                        yield chunk
+
             return StreamingResponse(
                 astream(),
                 media_type="multipart/x-mixed-replace; boundary=frame",
@@ -392,8 +394,10 @@ async def camera(name: str):
 
         if inspect.isgenerator(candidate):
             def sstream() -> Generator[bytes, None, None]:
-                for chunk in candidate:
-                    yield chunk
+                with closing(candidate):
+                    for chunk in candidate:
+                        yield chunk
+
             return StreamingResponse(
                 sstream(),
                 media_type="multipart/x-mixed-replace; boundary=frame",
