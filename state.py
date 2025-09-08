@@ -24,6 +24,7 @@ from config import (
     AUTH_TOKEN,
     CONNECT_INTERVAL,
     CONNECT_TIMEOUT,
+    read_lock,
 )
 from utils import _pick
 
@@ -87,12 +88,13 @@ state = PrinterState()
 
 
 def _require_known(name: str) -> None:
-    if name not in PRINTERS:
-        raise HTTPException(404, f"Unknown printer '{name}'")
-    if name not in SERIALS:
-        raise HTTPException(400, f"Missing serial for '{name}' (set BAMBULAB_SERIALS)")
-    if name not in LAN_KEYS:
-        raise HTTPException(400, f"Missing access code for '{name}' (set BAMBULAB_LAN_KEYS)")
+    with read_lock():
+        if name not in PRINTERS:
+            raise HTTPException(404, f"Unknown printer '{name}'")
+        if name not in SERIALS:
+            raise HTTPException(400, f"Missing serial for '{name}' (set BAMBULAB_SERIALS)")
+        if name not in LAN_KEYS:
+            raise HTTPException(400, f"Missing access code for '{name}' (set BAMBULAB_LAN_KEYS)")
 
 
 async def _connect(
@@ -125,11 +127,15 @@ async def _connect(
                         await asyncio.to_thread(fn)
                 except Exception as e:  # pragma: no cover - disconnect failures
                     log.warning("reconnect: disconnect(%s) failed: %s", name, e)
-
-        host = PRINTERS[name]
-        serial = SERIALS[name]
-        access = LAN_KEYS[name]
-        dtype = TYPES.get(name, "X1C")
+        with read_lock():
+            host = PRINTERS[name]
+            serial = SERIALS[name]
+            access = LAN_KEYS[name]
+            dtype = TYPES.get(name, "X1C")
+            region = REGION
+            email = EMAIL
+            username = USERNAME
+            auth_token = AUTH_TOKEN
 
         try:
             c = BambuClient(
@@ -138,10 +144,10 @@ async def _connect(
                 host=host,
                 local_mqtt=True,
                 access_code=access,
-                region=REGION,
-                email=EMAIL,
-                username=USERNAME,
-                auth_token=AUTH_TOKEN,
+                region=region,
+                email=email,
+                username=username,
+                auth_token=auth_token,
             )
 
             connect_method = c.connect

@@ -8,9 +8,10 @@ from __future__ import annotations
 
 import logging
 import os
+from contextlib import contextmanager
 from threading import Lock
 from types import MappingProxyType
-from typing import Dict, Mapping
+from typing import Dict, Mapping, Iterator
 from urllib.parse import urlparse
 
 log = logging.getLogger("bambubridge")
@@ -78,6 +79,13 @@ LAN_KEYS: Mapping[str, str] = MappingProxyType(_LAN_KEYS)
 TYPES: Mapping[str, str] = MappingProxyType(_TYPES)
 
 _CONFIG_LOCK = Lock()
+
+
+@contextmanager
+def read_lock() -> Iterator[None]:
+    """Acquire the configuration lock for safe concurrent reads."""
+    with _CONFIG_LOCK:
+        yield
 
 REGION = os.getenv("BAMBULAB_REGION", "US")
 EMAIL = os.getenv("BAMBULAB_EMAIL", "")

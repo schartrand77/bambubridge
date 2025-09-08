@@ -63,6 +63,19 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
+### Configuration access
+
+Call `config._validate_env()` to reload environment settings at runtime.  Code
+that reads configuration values while a reload may be in progress should use
+the `config.read_lock()` context manager to obtain a consistent snapshot:
+
+```python
+import config
+
+with config.read_lock():
+    printers = list(config.PRINTERS)
+```
+
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
