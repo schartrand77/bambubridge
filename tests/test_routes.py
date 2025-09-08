@@ -1,7 +1,7 @@
 def test_health_and_printers(client):
     res = client.get("/healthz")
     assert res.status_code == 200
-    assert res.json()["status"]["printers"] == ["p1"]
+    assert res.json()["printers"] == ["p1"]
 
     res = client.get("/api/printers")
     assert res.status_code == 200
