@@ -17,8 +17,8 @@ from urllib.parse import urlparse
 log = logging.getLogger("bambubridge")
 
 
-def _parse_env(env: str, sep: str, err: str) -> Dict[str, str]:
-    """Parse ``key{sep}value`` pairs from ``env`` separated by ``;``.
+def _parse_env(env: str, sep: str, err: str, sep_char: str) -> Dict[str, str]:
+    """Parse ``key{sep}value`` pairs from ``env`` separated by ``sep_char``.
 
     ``err`` is a format string used when an invalid segment is encountered.
     """
@@ -26,7 +26,7 @@ def _parse_env(env: str, sep: str, err: str) -> Dict[str, str]:
     out: Dict[str, str] = {}
     seen: set[str] = set()
     raw = os.getenv(env, "")
-    for part in filter(None, raw.split(";")):
+    for part in filter(None, raw.split(sep_char)):
         if sep in part:
             k, v = part.split(sep, 1)
             key = k.strip()
@@ -39,14 +39,16 @@ def _parse_env(env: str, sep: str, err: str) -> Dict[str, str]:
     return out
 
 
-def _pairs(env: str) -> Dict[str, str]:
-    """Parse "name@host;other@host2" strings into dicts."""
-    return _parse_env(env, "@", "Invalid printer pair segment '%s'")
+def _pairs(env: str, sep_char: str = ";") -> Dict[str, str]:
+    """Parse ``name@host`` segments into dicts using ``sep_char`` as delimiter."""
+
+    return _parse_env(env, "@", "Invalid printer pair segment '%s'", sep_char)
 
 
-def _kv(env: str) -> Dict[str, str]:
-    """Parse "key=value;other=value2" strings into dicts."""
-    return _parse_env(env, "=", "Invalid key/value segment '%s'")
+def _kv(env: str, sep_char: str = ";") -> Dict[str, str]:
+    """Parse ``key=value`` segments into dicts using ``sep_char`` as delimiter."""
+
+    return _parse_env(env, "=", "Invalid key/value segment '%s'", sep_char)
 
 
 def _get_float(env: str, default: str) -> float:

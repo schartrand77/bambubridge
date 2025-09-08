@@ -14,6 +14,19 @@ def test_kv(monkeypatch, cfg):
     assert cfg._kv("TEST_KV") == {"a": "1", "b": "2"}
 
 
+def test_pairs_custom_separator(monkeypatch, cfg):
+    monkeypatch.setenv("TEST_PAIRS_CUSTOM", "a@1|b@2")
+    assert cfg._pairs("TEST_PAIRS_CUSTOM", sep_char="|") == {
+        "a": "1",
+        "b": "2",
+    }
+
+
+def test_kv_custom_separator(monkeypatch, cfg):
+    monkeypatch.setenv("TEST_KV_CUSTOM", "a=1|b=2")
+    assert cfg._kv("TEST_KV_CUSTOM", sep_char="|") == {"a": "1", "b": "2"}
+
+
 def test_pairs_warn(monkeypatch, cfg, caplog):
     monkeypatch.setenv("TEST_PAIRS", "a@1;bad;b@2;oops")
     with caplog.at_level(logging.WARNING):
