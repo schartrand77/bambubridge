@@ -125,7 +125,7 @@ def _load_allow_origins() -> list[str]:
             origins.append(origin)
         else:
             log.warning("Ignoring invalid origin '%s'", origin)
-    return origins or list(DEFAULT_ORIGINS)
+    return list(dict.fromkeys(origins or DEFAULT_ORIGINS))
 
 
 ALLOW_ORIGINS = _load_allow_origins()

@@ -99,7 +99,7 @@ def test_validate_env_duplicate(cfg, monkeypatch):
 def test_allow_origins_validation(monkeypatch, caplog, cfg):
     monkeypatch.setenv(
         "BAMBULAB_ALLOW_ORIGINS",
-        "http://good.com,not-a-url,https://ok.org,ftp://bad.com",
+        "http://good.com,not-a-url,https://ok.org,ftp://bad.com,http://good.com,https://ok.org",
     )
     with caplog.at_level(logging.WARNING):
         cfg._validate_env()
