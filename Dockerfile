@@ -5,9 +5,10 @@ WORKDIR /app
 # Install runtime dependencies only
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-# Copy all Python modules into the container
-COPY *.py .
-RUN useradd -u 10001 -m appuser
+# Ensure application user exists before copying files
+RUN id -u appuser >/dev/null 2>&1 || useradd -u 10001 -m appuser
+# Copy all Python modules with proper ownership
+COPY --chown=appuser:appuser *.py .
 USER appuser
 EXPOSE 8088
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=5 \
