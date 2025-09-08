@@ -14,6 +14,23 @@ def test_health_and_printers(client):
     assert printer["last_error"] is None
 
 
+def test_unknown_status_returns_404(client):
+    res = client.get("/api/unknown/status")
+    assert res.status_code == 404
+
+
+def test_status_before_connection(client):
+    res = client.get("/api/p1/status")
+    assert res.status_code == 200
+    data = res.json()["status"]
+    assert data["name"] == "p1"
+    assert data["host"] == "127.0.0.1"
+    assert data["serial"] == "SERIAL1"
+    assert data["connected"] is True
+    assert data["get_version"] == {"firmware": "1.0"}
+    assert data["push_all"] == {"state": "ok"}
+
+
 def test_connect_status_and_actions(client):
     headers = {"X-API-Key": "secret"}
 
