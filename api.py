@@ -41,7 +41,10 @@ log = logging.getLogger("bambubridge")
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     config._validate_env()
-    if not config.API_KEY:
+    with config.read_lock():
+        api_key = config.API_KEY
+        printer_names = list(PRINTERS)
+    if not api_key:
         raise RuntimeError("API key not configured")
     if not AUTOCONNECT:
         log.info("startup: lazy mode (BAMBULAB_AUTOCONNECT not set)")
@@ -54,7 +57,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             except Exception as e:  # pragma: no cover - connection errors
                 log.warning("warm(%s) error: %s", n, e)
 
-        await asyncio.gather(*[warm(n) for n in PRINTERS])
+        await asyncio.gather(*[warm(n) for n in printer_names])
     try:
         yield
     finally:
@@ -100,12 +103,14 @@ api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 
 async def require_api_key(api_key: str = Security(api_key_header)) -> None:
-    if config.API_KEY is None:
+    with config.read_lock():
+        expected_api_key = config.API_KEY
+    if expected_api_key is None:
         raise HTTPException(
             status_code=500,
             detail="API key not configured",
         )
-    if not api_key or not secrets.compare_digest(api_key, config.API_KEY):
+    if not api_key or not secrets.compare_digest(api_key, expected_api_key):
         raise HTTPException(
             status_code=401,
             detail="Invalid or missing API key",
@@ -257,21 +262,26 @@ class ActionResult(BaseModel):
 @app.get("/healthz")
 async def healthz() -> StatusResult:
     """Return API health status and list of known printers."""
-    return StatusResult(status={"printers": list(PRINTERS.keys())})
+    with config.read_lock():
+        names = list(PRINTERS.keys())
+    return StatusResult(status={"printers": names})
 
 
 @app.get("/api/printers")
 async def list_printers() -> list[PrinterInfo]:
     """List configured printers and their connection status."""
     out: list[PrinterInfo] = []
+    with config.read_lock():
+        printer_items = list(PRINTERS.items())
+        serials = dict(SERIALS)
     clients_snapshot, errors_snapshot = await state.snapshot()
-    for n, host in PRINTERS.items():
+    for n, host in printer_items:
         c = clients_snapshot.get(n)
         out.append(
             PrinterInfo(
                 name=n,
                 host=host,
-                serial=SERIALS.get(n),
+                serial=serials.get(n),
                 connected=bool(c and getattr(c, "connected", False)),
                 last_error=errors_snapshot.get(n),
             )
@@ -283,9 +293,9 @@ async def list_printers() -> list[PrinterInfo]:
 async def connect_now(name: str) -> StatusResult:
     """Connect to a printer and return its details."""
     c = await _connect(name)
-    return StatusResult(
-        status={"name": name, "host": c.host, "serial": SERIALS.get(name)}
-    )
+    with config.read_lock():
+        serial = SERIALS.get(name)
+    return StatusResult(status={"name": name, "host": c.host, "serial": serial})
 
 
 @app.post("/api/{name}/disconnect", dependencies=[Depends(require_api_key)])
@@ -315,10 +325,12 @@ async def status(name: str) -> StatusResult:
     """Return status information for a printer as JSON."""
     c = await _connect(name)
     dev = c.get_device()
+    with config.read_lock():
+        serial = SERIALS.get(name)
     data: Dict[str, Any] = {
         "name": name,
         "host": c.host,
-        "serial": SERIALS.get(name),
+        "serial": serial,
         "connected": c.connected,
     }
     try:
