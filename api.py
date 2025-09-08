@@ -256,15 +256,21 @@ class ActionResult(BaseModel):
     result: Dict[str, Any] = Field(default_factory=dict)
 
 
+class HealthzResult(BaseModel):
+    """Response model for the health check endpoint."""
+
+    printers: list[str] = Field(default_factory=list)
+
+
 # ---- routes ------------------------------------------------------------------
 
 
 @app.get("/healthz")
-async def healthz() -> StatusResult:
+async def healthz() -> HealthzResult:
     """Return API health status and list of known printers."""
     with config.read_lock():
         names = list(PRINTERS.keys())
-    return StatusResult(status={"printers": names})
+    return HealthzResult(printers=names)
 
 
 @app.get("/api/printers")
