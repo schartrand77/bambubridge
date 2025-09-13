@@ -2,10 +2,13 @@ import pytest
 
 
 @pytest.mark.parametrize("impl", ["sync", "async", "callable", "generator"])
-def test_camera_stream(client, monkeypatch, impl):
+@pytest.mark.parametrize("use_memoryview", [False, True])
+def test_camera_stream(client, monkeypatch, impl, use_memoryview):
     from state import BambuClient
 
     chunks = [b"chunk1", b"chunk2"]
+    if use_memoryview:
+        chunks = [memoryview(c) for c in chunks]
 
     if impl == "async":
         async def fake_camera_mjpeg(self):
