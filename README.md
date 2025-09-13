@@ -59,7 +59,7 @@ This project supports Python 3.12 or newer. Ensure your local environment uses a
 Install the development dependencies to run the test suite:
 
 ```bash
-pip install -r requirements-dev.txt
+pip install -e .[dev]
 pytest
 ```
 
