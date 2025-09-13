@@ -26,7 +26,16 @@ def main() -> None:
         logging.warning(
             "Invalid log level %s provided, falling back to INFO", level_name
         )
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", "8088")))
+    port_env = os.getenv("PORT", "8088")
+    try:
+        port = int(port_env)
+    except ValueError:
+        port = 8088
+        logging.warning(
+            "Invalid port %s provided, falling back to 8088",
+            port_env,
+        )
+    uvicorn.run(app, host="0.0.0.0", port=port)
 
 
 if __name__ == "__main__":
