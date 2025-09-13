@@ -10,13 +10,14 @@ from contextlib import asynccontextmanager, closing, aclosing
 from typing import Dict, Any, Optional, Callable, AsyncGenerator, Generator
 
 from fastapi import FastAPI, HTTPException, Depends, Security
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.docs import (
     get_swagger_ui_html,
     get_swagger_ui_oauth2_redirect_html,
 )
+from fastapi.openapi.utils import get_openapi
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel, HttpUrl, Field
 
@@ -81,15 +82,38 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 # ---- app ----------------------------------------------------------------------
+# Note: set openapi_url=None; we serve /openapi.json ourselves so we control the spec version.
 app = FastAPI(
     title="Bambu LAN Bridge",
     version=__version__,
-    openapi_version="3.0.3",   # force 3.0.x so Swagger UI renders
+    openapi_version="3.0.3",   # belt-and-suspenders; we also override below
     docs_url=None,             # we serve /docs ourselves below
     redoc_url="/redoc",
-    openapi_url="/openapi.json",
+    openapi_url=None,          # disable auto route; add our own /openapi.json
     lifespan=lifespan,
 )
+
+# ---- Force OpenAPI 3.0.3 and expose /openapi.json explicitly -----------------
+def _openapi_303() -> Dict[str, Any]:
+    # regenerate fresh to reflect current routes; cache afterward
+    schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=getattr(app, "description", None),
+        routes=app.routes,
+    )
+    schema["openapi"] = "3.0.3"
+    app.openapi_schema = schema
+    return schema
+
+# Monkey-patch generator so anything calling app.openapi() gets 3.0.3
+app.openapi = _openapi_303  # type: ignore[attr-defined]
+
+# Serve the schema at a fixed, absolute URL Swagger will request
+@app.get("/openapi.json", include_in_schema=False)
+def openapi_json() -> JSONResponse:
+    return JSONResponse(_openapi_303())
+
 
 # CORS configuration (defaults to localhost only; override via BAMBULAB_ALLOW_ORIGINS)
 app.add_middleware(
@@ -129,7 +153,7 @@ try:
     def _docs():
         """Serve Swagger UI HTML for the API."""
         return get_swagger_ui_html(
-            openapi_url=app.openapi_url,
+            openapi_url="/openapi.json",  # absolute path; ignore proxies/root_path quirks
             title=f"{app.title} — API",
             oauth2_redirect_url=app.swagger_ui_oauth2_redirect_url,
             swagger_js_url="/_docs/swagger-ui-bundle.js",
@@ -147,7 +171,7 @@ except Exception as _e:  # pragma: no cover - optional dependency missing
     def fallback_docs():
         """Serve basic Swagger UI HTML when bundle is unavailable."""
         return get_swagger_ui_html(
-            openapi_url=app.openapi_url,
+            openapi_url="/openapi.json",  # absolute
             title=f"{app.title} — API",
         )
 
