@@ -391,7 +391,7 @@ async def stop(name: str) -> ActionResult:
 
 
 @app.get("/api/{name}/camera", dependencies=[Depends(require_api_key)])
-async def camera(name: str):
+async def camera(name: str) -> StreamingResponse:
     """Stream the printer camera as an MJPEG ``StreamingResponse``.
 
     Supports both synchronous and asynchronous ``camera_mjpeg`` implementations
