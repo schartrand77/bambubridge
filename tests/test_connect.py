@@ -136,3 +136,27 @@ async def test_connect_closes_old_client(monkeypatch, state_module):
     assert old.closed is True
     assert new is not old
     assert await state_module.state.get_client("p1") is new
+
+
+@pytest.mark.asyncio
+async def test_disconnect_frees_lock(monkeypatch, state_module, api_module):
+    class FakeClient:
+        def __init__(self, *args, **kwargs):
+            self.host = kwargs["host"]
+            self.connected = False
+
+        def connect(self, callback=None):
+            self.connected = True
+
+        def disconnect(self):
+            self.connected = False
+
+    monkeypatch.setattr(state_module, "BambuClient", FakeClient)
+
+    await state_module._connect("p1")
+    async with state_module.state.read_lock():
+        assert "p1" in state_module.state.connect_locks
+
+    await api_module.disconnect_now("p1")
+    async with state_module.state.read_lock():
+        assert "p1" not in state_module.state.connect_locks

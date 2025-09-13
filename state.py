@@ -77,11 +77,18 @@ class PrinterState:
         async with self.read_lock():
             return dict(self.clients), dict(self.last_error)
 
+    async def discard_client(self, name: str) -> None:
+        """Remove a client and its associated locks and error state."""
+        async with self.write_lock:
+            self.clients.pop(name, None)
+            self.last_error.pop(name, None)
+            self.connect_locks.pop(name, None)
+
     async def clear(self) -> None:
         async with self.write_lock:
-            self.clients.clear()
-            self.last_error.clear()
-            self.connect_locks.clear()
+            names = set(self.clients) | set(self.connect_locks) | set(self.last_error)
+        for name in names:
+            await self.discard_client(name)
 
 
 state = PrinterState()
