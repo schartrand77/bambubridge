@@ -152,3 +152,23 @@ def test_config_readonly_and_copy(monkeypatch, cfg):
     mutable = cfg._mutable_copy(cfg.PRINTERS)
     mutable["p2"] = "h2"
     assert "p2" not in cfg.PRINTERS
+
+
+def test_connect_interval_invalid(monkeypatch, caplog):
+    monkeypatch.setenv("BAMBULAB_CONNECT_INTERVAL", "0")
+    import sys
+    sys.modules.pop("config", None)
+    with caplog.at_level(logging.ERROR):
+        import config as cfg  # type: ignore[import]
+    assert cfg.CONNECT_INTERVAL == 0.1
+    assert "BAMBULAB_CONNECT_INTERVAL must be > 0" in caplog.text
+
+
+def test_connect_timeout_invalid(monkeypatch, caplog):
+    monkeypatch.setenv("BAMBULAB_CONNECT_TIMEOUT", "-1")
+    import sys
+    sys.modules.pop("config", None)
+    with caplog.at_level(logging.ERROR):
+        import config as cfg  # type: ignore[import]
+    assert cfg.CONNECT_TIMEOUT == 5
+    assert "BAMBULAB_CONNECT_TIMEOUT must be > 0" in caplog.text
