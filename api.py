@@ -410,7 +410,7 @@ async def camera(name: str):
             async def astream() -> AsyncGenerator[bytes, None]:
                 async with aclosing(candidate) as agen:
                     async for chunk in agen:
-                        if not isinstance(chunk, (bytes, bytearray)):
+                        if not isinstance(chunk, (bytes, bytearray, memoryview)):
                             await agen.aclose()
                             raise HTTPException(
                                 502, "camera stream yielded non-bytes chunk"
@@ -426,7 +426,7 @@ async def camera(name: str):
             def sstream() -> Generator[bytes, None, None]:
                 with closing(candidate) as gen:
                     for chunk in gen:
-                        if not isinstance(chunk, (bytes, bytearray)):
+                        if not isinstance(chunk, (bytes, bytearray, memoryview)):
                             gen.close()
                             raise HTTPException(
                                 502, "camera stream yielded non-bytes chunk"
