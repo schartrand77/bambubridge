@@ -84,7 +84,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 app = FastAPI(
     title="Bambu LAN Bridge",
     version=__version__,
-    docs_url=None,
+    openapi_version="3.0.3",   # force 3.0.x so Swagger UI renders
+    docs_url=None,             # we serve /docs ourselves below
     redoc_url="/redoc",
     openapi_url="/openapi.json",
     lifespan=lifespan,
