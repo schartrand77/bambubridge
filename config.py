@@ -6,12 +6,12 @@ progress.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
-from contextlib import contextmanager
-from threading import Lock
+from contextlib import asynccontextmanager
 from types import MappingProxyType
-from typing import Dict, Mapping, Iterator
+from typing import AsyncIterator, Dict, Mapping
 from urllib.parse import urlparse
 
 log = logging.getLogger("bambubridge")
@@ -80,13 +80,13 @@ SERIALS: Mapping[str, str] = MappingProxyType(_SERIALS)
 LAN_KEYS: Mapping[str, str] = MappingProxyType(_LAN_KEYS)
 TYPES: Mapping[str, str] = MappingProxyType(_TYPES)
 
-_CONFIG_LOCK = Lock()
+_CONFIG_LOCK = asyncio.Lock()
 
 
-@contextmanager
-def read_lock() -> Iterator[None]:
+@asynccontextmanager
+async def read_lock() -> AsyncIterator[None]:
     """Acquire the configuration lock for safe concurrent reads."""
-    with _CONFIG_LOCK:
+    async with _CONFIG_LOCK:
         yield
 
 REGION = os.getenv("BAMBULAB_REGION", "US")
@@ -134,7 +134,7 @@ ALLOW_ORIGINS = _load_allow_origins()
 API_KEY = os.getenv("BAMBULAB_API_KEY")
 
 
-def _validate_env() -> None:
+async def _validate_env() -> None:
     """Cross-check name sets and ensure required fields exist.
 
     Callers must not access configuration globals while revalidation is in
@@ -151,7 +151,7 @@ def _validate_env() -> None:
     except ValueError as exc:
         raise RuntimeError(f"Printer configuration invalid: {exc}") from exc
 
-    with _CONFIG_LOCK:
+    async with _CONFIG_LOCK:
         _PRINTERS.clear()
         _PRINTERS.update(printers)
         _SERIALS.clear()

@@ -65,14 +65,15 @@ pytest
 
 ### Configuration access
 
-Call `config._validate_env()` to reload environment settings at runtime.  Code
-that reads configuration values while a reload may be in progress should use
-the `config.read_lock()` context manager to obtain a consistent snapshot:
+Call `await config._validate_env()` to reload environment settings at runtime.
+Code that reads configuration values while a reload may be in progress should
+use the `async with config.read_lock()` context manager to obtain a consistent
+snapshot:
 
 ```python
 import config
 
-with config.read_lock():
+async with config.read_lock():
     printers = list(config.PRINTERS)
 ```
 
