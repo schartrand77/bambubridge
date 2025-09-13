@@ -1,10 +1,15 @@
 FROM python:3.12.0-slim
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PYTHONPATH=/app \
     BAMBULAB_LOG_LEVEL=INFO PORT=8088
-WORKDIR /app
 # Install runtime dependencies only
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+WORKDIR /app
+COPY pyproject.toml .
+RUN python - <<'PY'
+import tomllib, subprocess
+with open('pyproject.toml', 'rb') as f:
+    deps = tomllib.load(f)['project']['dependencies']
+subprocess.run(['pip', 'install', '--no-cache-dir', *deps], check=True)
+PY
 # Ensure application user exists before copying files
 RUN id -u appuser >/dev/null 2>&1 || useradd -u 10001 -m appuser
 # Copy all Python modules with proper ownership
