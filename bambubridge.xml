@@ -28,10 +28,11 @@
   </Labels>
 
   <!-- Only these Config rows define env vars shown in the UI -->
-  <Config Name="BAMBULAB_PRINTERS" Target="BAMBULAB_PRINTERS" Default="babu@192.168.1.XX" Mode="env" Description="name@host;name2@host2" Type="Variable" Display="always" Required="true" Mask="false"/>
-  <Config Name="BAMBULAB_SERIALS" Target="BAMBULAB_SERIALS" Default="babu=00M0XXXXXXXXXXX" Mode="env" Description="name=SERIAL;name2=SERIAL2" Type="Variable" Display="always" Required="true" Mask="false"/>
-  <Config Name="BAMBULAB_LAN_KEYS" Target="BAMBULAB_LAN_KEYS" Default="babu=YOUR_ACCESS_CODE" Mode="env" Description="name=LAN_ACCESS_CODE;name2=CODE2" Type="Variable" Display="always" Required="true" Mask="true"/>
-  <Config Name="BAMBULAB_TYPES" Target="BAMBULAB_TYPES" Default="babu=X1C" Mode="env" Description="(optional) name=model (X1C/P1S/A1...)" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="BAMBULAB_PRINTERS" Target="BAMBULAB_PRINTERS" Default="yourprintername@192.168.1.XX" Mode="env" Description="name@host;name2@host2" Type="Variable" Display="always" Required="true" Mask="false"/>
+  <Config Name="BAMBULAB_SERIALS" Target="BAMBULAB_SERIALS" Default="yourprintername=00M0XXXXXXXXXXX" Mode="env" Description="name=SERIAL;name2=SERIAL2" Type="Variable" Display="always" Required="true" Mask="false"/>
+  <Config Name="BAMBULAB_API_KEY" Target="BAMBULAB_API_KEY" Default="somerandomapikey" Mode="env" Description="somerandomserial" Type="Variable" Display="always" Required="true" Mask="false"/>
+  <Config Name="BAMBULAB_LAN_KEYS" Target="BAMBULAB_LAN_KEYS" Default="yourprintername=YOUR_ACCESS_CODE" Mode="env" Description="name=LAN_ACCESS_CODE;name2=CODE2" Type="Variable" Display="always" Required="true" Mask="true"/>
+  <Config Name="BAMBULAB_TYPES" Target="BAMBULAB_TYPES" Default="yourprintername=X1C" Mode="env" Description="(optional) name=model (X1C/P1S/A1...)" Type="Variable" Display="advanced" Required="false" Mask="false"/>
   <Config Name="BAMBULAB_REGION" Target="BAMBULAB_REGION" Default="US" Mode="env" Description="Region for pybambu ctor" Type="Variable" Display="advanced" Required="false" Mask="false"/>
   <Config Name="BAMBULAB_AUTOCONNECT" Target="BAMBULAB_AUTOCONNECT" Default="1" Mode="env" Description="1=autoconnect on startup; 0=lazy" Type="Variable" Display="advanced" Required="false" Mask="false"/>
   <Config Name="BAMBULAB_CONNECT_INTERVAL" Target="BAMBULAB_CONNECT_INTERVAL" Default="0.1" Mode="env" Description="Seconds between connection status checks" Type="Variable" Display="advanced" Required="false" Mask="false"/>
