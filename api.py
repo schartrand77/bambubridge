@@ -184,7 +184,10 @@ async def _invoke_print(
     how to pass the ``gcode_url`` and optional ``thmf_url`` parameters.
     """
 
-    sig = inspect.signature(fn)
+    try:
+        sig = inspect.signature(fn)
+    except ValueError as e:
+        raise TypeError("Function signature cannot be inspected") from e
     param_names = [p.name for p in sig.parameters.values()]
 
     args: list[Any] = []
