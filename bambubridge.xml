@@ -40,5 +40,5 @@
   <Config Name="PYTHONUNBUFFERED" Target="PYTHONUNBUFFERED" Default="1" Mode="env" Description="leave as 1" Type="Variable" Display="advanced" Required="false" Mask="false"/>
 
   <!-- Expose the host port in the UI -->
-  <Config Name="WebUI Port" Target="8288" Default="8288" Mode="tcp" Description="Host port for the API/UI" Type="Port" Display="always" Required="true" Mask="false"/>
+  <Config Name="WebUI Port" Target="8088" Default="8288" Mode="tcp" Description="Host port for the API/UI" Type="Port" Display="always" Required="true" Mask="false"/>
 </Container>
