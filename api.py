@@ -40,8 +40,8 @@ log = logging.getLogger("bambubridge")
 # ---- lifespan -----------------------------------------------------------------
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    config._validate_env()
-    with config.read_lock():
+    await config._validate_env()
+    async with config.read_lock():
         api_key = config.API_KEY
         printer_names = list(PRINTERS)
     if not api_key:
@@ -103,7 +103,7 @@ api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 
 async def require_api_key(api_key: str = Security(api_key_header)) -> None:
-    with config.read_lock():
+    async with config.read_lock():
         expected_api_key = config.API_KEY
     if expected_api_key is None:
         raise HTTPException(
@@ -268,7 +268,7 @@ class HealthzResult(BaseModel):
 @app.get("/healthz")
 async def healthz() -> HealthzResult:
     """Return API health status and list of known printers."""
-    with config.read_lock():
+    async with config.read_lock():
         names = list(PRINTERS.keys())
     return HealthzResult(printers=names)
 
@@ -277,7 +277,7 @@ async def healthz() -> HealthzResult:
 async def list_printers() -> list[PrinterInfo]:
     """List configured printers and their connection status."""
     out: list[PrinterInfo] = []
-    with config.read_lock():
+    async with config.read_lock():
         printer_items = list(PRINTERS.items())
         serials = dict(SERIALS)
     clients_snapshot, errors_snapshot = await state.snapshot()
@@ -299,7 +299,7 @@ async def list_printers() -> list[PrinterInfo]:
 async def connect_now(name: str) -> StatusResult:
     """Connect to a printer and return its details."""
     c = await _connect(name)
-    with config.read_lock():
+    async with config.read_lock():
         serial = SERIALS.get(name)
     return StatusResult(status={"name": name, "host": c.host, "serial": serial})
 
@@ -307,7 +307,7 @@ async def connect_now(name: str) -> StatusResult:
 @app.post("/api/{name}/disconnect", dependencies=[Depends(require_api_key)])
 async def disconnect_now(name: str) -> ActionResult:
     """Disconnect from a printer and confirm the action."""
-    _require_known(name)
+    await _require_known(name)
     c = await state.get_client(name)
     if not c:
         raise HTTPException(404, "Not connected")
@@ -331,7 +331,7 @@ async def status(name: str) -> StatusResult:
     """Return status information for a printer as JSON."""
     c = await _connect(name)
     dev = c.get_device()
-    with config.read_lock():
+    async with config.read_lock():
         serial = SERIALS.get(name)
     data: Dict[str, Any] = {
         "name": name,

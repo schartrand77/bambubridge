@@ -87,8 +87,8 @@ class PrinterState:
 state = PrinterState()
 
 
-def _require_known(name: str) -> None:
-    with read_lock():
+async def _require_known(name: str) -> None:
+    async with read_lock():
         if name not in PRINTERS:
             raise HTTPException(404, f"Unknown printer '{name}'")
         if name not in SERIALS:
@@ -105,7 +105,7 @@ async def _connect(
     max_wait: float = CONNECT_TIMEOUT,
 ) -> BambuClient:
     """Ensure a connected BambuClient; return it or raise HTTP error."""
-    _require_known(name)
+    await _require_known(name)
 
     c = await state.get_client(name)
     if c and getattr(c, "connected", False):
@@ -127,7 +127,7 @@ async def _connect(
                         await asyncio.to_thread(fn)
                 except Exception as e:  # pragma: no cover - disconnect failures
                     log.warning("reconnect: disconnect(%s) failed: %s", name, e)
-        with read_lock():
+        async with read_lock():
             host = PRINTERS[name]
             serial = SERIALS[name]
             access = LAN_KEYS[name]

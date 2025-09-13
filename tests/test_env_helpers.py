@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from types import MappingProxyType
 
@@ -82,7 +83,7 @@ def test_validate_env_missing(cfg, monkeypatch):
     monkeypatch.setenv("BAMBULAB_LAN_KEYS", "p1=k")
     monkeypatch.setenv("BAMBULAB_TYPES", "p1=X1C")
     with pytest.raises(RuntimeError) as exc:
-        cfg._validate_env()
+        asyncio.run(cfg._validate_env())
     assert "Missing BAMBULAB_SERIALS for p1" in str(exc.value)
 
 
@@ -92,7 +93,7 @@ def test_validate_env_multiple_missing(cfg, monkeypatch):
     monkeypatch.setenv("BAMBULAB_LAN_KEYS", "p1=k")
     monkeypatch.setenv("BAMBULAB_TYPES", "")
     with pytest.raises(RuntimeError) as exc:
-        cfg._validate_env()
+        asyncio.run(cfg._validate_env())
     msg = str(exc.value)
     assert "Missing BAMBULAB_SERIALS for p1" in msg
     assert "Missing BAMBULAB_PRINTERS for p2" in msg
@@ -105,7 +106,7 @@ def test_validate_env_duplicate(cfg, monkeypatch):
     monkeypatch.setenv("BAMBULAB_LAN_KEYS", "a=k")
     monkeypatch.setenv("BAMBULAB_TYPES", "a=X1C")
     with pytest.raises(RuntimeError) as exc:
-        cfg._validate_env()
+        asyncio.run(cfg._validate_env())
     assert "Duplicate BAMBULAB_PRINTERS entry for 'a'" in str(exc.value)
 
 
@@ -115,7 +116,7 @@ def test_allow_origins_validation(monkeypatch, caplog, cfg):
         "http://good.com,not-a-url,https://ok.org,ftp://bad.com,http://good.com,https://ok.org",
     )
     with caplog.at_level(logging.WARNING):
-        cfg._validate_env()
+        asyncio.run(cfg._validate_env())
 
     assert cfg.ALLOW_ORIGINS == ["http://good.com", "https://ok.org"]
     assert "Ignoring invalid origin 'not-a-url'" in caplog.text
@@ -125,13 +126,13 @@ def test_allow_origins_validation(monkeypatch, caplog, cfg):
 def test_validate_env_rereads_api_key_and_origins(monkeypatch, cfg):
     monkeypatch.setenv("BAMBULAB_API_KEY", "first")
     monkeypatch.setenv("BAMBULAB_ALLOW_ORIGINS", "http://one.com")
-    cfg._validate_env()
+    asyncio.run(cfg._validate_env())
     assert cfg.API_KEY == "first"
     assert cfg.ALLOW_ORIGINS == ["http://one.com"]
 
     monkeypatch.setenv("BAMBULAB_API_KEY", "second")
     monkeypatch.setenv("BAMBULAB_ALLOW_ORIGINS", "http://two.com")
-    cfg._validate_env()
+    asyncio.run(cfg._validate_env())
     assert cfg.API_KEY == "second"
     assert cfg.ALLOW_ORIGINS == ["http://two.com"]
 
@@ -141,7 +142,7 @@ def test_config_readonly_and_copy(monkeypatch, cfg):
     monkeypatch.setenv("BAMBULAB_SERIALS", "p1=s")
     monkeypatch.setenv("BAMBULAB_LAN_KEYS", "p1=k")
     monkeypatch.setenv("BAMBULAB_TYPES", "p1=X1C")
-    cfg._validate_env()
+    asyncio.run(cfg._validate_env())
 
     assert isinstance(cfg.PRINTERS, MappingProxyType)
 
